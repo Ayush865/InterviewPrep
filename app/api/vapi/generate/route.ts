@@ -4,6 +4,20 @@ import { google } from "@ai-sdk/google";
 import { db } from "@/firebase/admin";
 import { getRandomInterviewCover } from "@/lib/utils";
 
+// Add CORS headers for Vapi to access this endpoint
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+};
+
+export async function OPTIONS() {
+  return new Response(null, {
+    status: 200,
+    headers: corsHeaders,
+  });
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -31,11 +45,23 @@ export async function POST(request: Request) {
           error: "Missing required fields",
           received: { type, role, level, techstack, amount, userid }
         }, 
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
     }
 
     console.log("Generating questions with:", { type, role, level, techstack, amount, userid });
+
+    // Check if Firebase is properly initialized
+    if (!db) {
+      console.error("Firebase Admin DB is not initialized");
+      return Response.json(
+        { 
+          success: false, 
+          error: "Database connection failed. Check Firebase environment variables."
+        }, 
+        { status: 500, headers: corsHeaders }
+      );
+    }
 
     const { text: questions } = await generateText({
       model: google("gemini-2.5-flash"),
@@ -70,7 +96,7 @@ export async function POST(request: Request) {
 
     await db.collection("interviews").add(interview);
 
-    return Response.json({ success: true }, { status: 200 });
+    return Response.json({ success: true }, { status: 200, headers: corsHeaders });
   } catch (error) {
     console.error("Error in /api/vapi/generate:", {
       error,
@@ -84,11 +110,14 @@ export async function POST(request: Request) {
         error: error instanceof Error ? error.message : "Failed to generate interview questions",
         details: error instanceof Error ? error.stack : String(error)
       }, 
-      { status: 500 }
+      { status: 500, headers: corsHeaders }
     );
   }
 }
 
 export async function GET() {
-  return Response.json({ success: true, data: "Thank you!" }, { status: 200 });
+  return Response.json(
+    { success: true, data: "Thank you!" }, 
+    { status: 200, headers: corsHeaders }
+  );
 }
