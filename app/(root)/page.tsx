@@ -13,9 +13,10 @@ import {
 async function Home() {
   const user = await getCurrentUser();
 
+  // Only fetch interviews if user is authenticated
   const [userInterviews, allInterview] = await Promise.all([
-    getInterviewsByUserId(user?.id!),
-    getLatestInterviews({ userId: user?.id! }),
+    user?.id ? getInterviewsByUserId(user.id) : Promise.resolve(null),
+    user?.id ? getLatestInterviews({ userId: user.id }) : Promise.resolve(null),
   ]);
 
   const hasPastInterviews = userInterviews?.length! > 0;

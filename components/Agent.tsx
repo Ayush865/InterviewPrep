@@ -34,10 +34,12 @@ const Agent = ({
   const [messages, setMessages] = useState<SavedMessage[]>([]);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [lastMessage, setLastMessage] = useState<string>("");
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const onCallStart = () => {
       setCallStatus(CallStatus.ACTIVE);
+      setError(null); // Clear any errors when call starts successfully
     };
 
     const onCallEnd = () => {
@@ -61,8 +63,39 @@ const Agent = ({
       setIsSpeaking(false);
     };
 
-    const onError = (error: Error) => {
-      console.log("Error:", error);
+    const onError = (error: any) => {
+      console.error("VAPI Error:", {
+        error,
+        errorMessage: error?.message || "No error message",
+        errorType: typeof error,
+        errorConstructor: error?.constructor?.name,
+        errorString: String(error),
+      });
+
+      // If it's a Response object, log the details
+      if (error instanceof Response) {
+        console.error("VAPI Response Error Details:", {
+          status: error.status,
+          statusText: error.statusText,
+          url: error.url,
+          // Don't try to read the body as it's already consumed by VAPI SDK
+        });
+      }
+      
+      // Check if error has a data property (VAPI error format)
+      if (error?.data || error?.error) {
+        console.error("VAPI Error Data:", error.data || error.error);
+      }
+      
+      // Set user-friendly error message
+      const errorMessage = error instanceof Response 
+        ? `API Error ${error.status}: ${error.statusText || 'Bad Request'}. Please check the console for details.`
+        : error?.message || "An error occurred during the call. Please try again.";
+      
+      setError(errorMessage);
+      
+      // Reset call status on error
+      setCallStatus(CallStatus.INACTIVE);
     };
 
     vapi.on("call-start", onCallStart);
@@ -116,27 +149,105 @@ const Agent = ({
 
   const handleCall = async () => {
     setCallStatus(CallStatus.CONNECTING);
+    setError(null); // Clear any previous errors
 
-    if (type === "generate") {
-      await vapi.start(process.env.NEXT_PUBLIC_VAPI_WORKFLOW_ID!, {
-        variableValues: {
-          username: userName,
-          userid: userId,
-        },
-      });
-    } else {
-      let formattedQuestions = "";
-      if (questions) {
-        formattedQuestions = questions
-          .map((question) => `- ${question}`)
-          .join("\n");
+    try {
+      // Validate VAPI instance
+      if (!vapi) {
+        throw new Error("VAPI instance is not initialized");
       }
 
-      await vapi.start(interviewer, {
-        variableValues: {
-          questions: formattedQuestions,
-        },
+      if (type === "generate") {
+        // IMPORTANT: The web SDK cannot start workflows directly.
+        // Workflows require the server SDK or an assistant that references the workflow.
+        
+        // Temporary workaround: Use an assistant that mimics the workflow behavior
+        console.warn("⚠️ Web SDK cannot start workflows directly. Using assistant fallback.");
+        
+        const workflowAssistant = {
+          name: "Interview Generator",
+          model: {
+            provider: "openai",
+            model: "gpt-4",
+            messages: [
+              {
+                role: "system",
+                content: `You are a voice assistant helping with creating new AI interviewers. Your task is to collect data from the user.
+                
+Ask the user for:
+1. Job experience level (Junior, Mid, Senior)
+2. Number of questions to generate
+3. Technologies to cover (e.g., React, Node.js, Python)
+4. Job role (e.g., Frontend, Backend, Full Stack)
+5. Interview type (Technical, Behavioral, or Mixed)
+
+After collecting all information, confirm with the user and let them know you'll generate their interview.
+
+Remember this is a voice conversation - do not use any special characters.
+
+User ID: ${userId}
+Username: ${userName}`,
+              },
+            ],
+          },
+          voice: {
+            voiceId: "Elliot",
+            provider: "vapi",
+          },
+          firstMessage: "Hi! I'll help you create a custom AI interviewer. Let me ask you a few questions to personalize your interview.",
+          transcriber: {
+            provider: "deepgram",
+            model: "nova-2",
+            language: "en",
+          },
+          // Note: Tool calling would go here to trigger /api/vapi/generate
+          // For now, this is a placeholder until you set up proper workflow support
+        };
+
+        console.log("Starting workflow-like assistant with user context:", {
+          userId,
+          userName,
+        });
+
+        await vapi.start(workflowAssistant as any, {
+          variableValues: {
+            userid: userId,
+            username: userName,
+          },
+        });
+      } else {
+        let formattedQuestions = "";
+        if (questions) {
+          formattedQuestions = questions
+            .map((question) => `- ${question}`)
+            .join("\n");
+        }
+
+        console.log("Starting VAPI interviewer with:", {
+          questionsCount: questions?.length || 0,
+        });
+
+        await vapi.start(interviewer, {
+          variableValues: {
+            questions: formattedQuestions,
+          },
+        });
+      }
+    } catch (error: any) {
+      console.error("Error starting call:", {
+        raw: error,
+        type: typeof error,
+        name: error?.name,
+        message: error?.message,
+        keys: error ? Object.keys(error) : [],
+        toString: String(error),
       });
+
+      setError(
+        error?.message ||
+          "Failed to start the interview. Please verify your Vapi Web Token and Workflow Id belong to the same project and try again."
+      );
+      setCallStatus(CallStatus.INACTIVE);
     }
   };
 
@@ -190,6 +301,21 @@ const Agent = ({
             >
               {lastMessage}
             </p>
+          </div>
+        </div>
+      )}
+
+      {error && (
+        <div className="w-full flex justify-center mb-4">
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded max-w-md text-center">
+            <strong className="font-bold">Error: </strong>
+            <span className="block sm:inline">{error}</span>
+            <button
+              onClick={() => setError(null)}
+              className="ml-2 text-red-700 hover:text-red-900 underline"
+            >
+              Dismiss
+            </button>
           </div>
         </div>
       )}

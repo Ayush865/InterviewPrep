@@ -5,11 +5,40 @@ import { db } from "@/firebase/admin";
 import { getRandomInterviewCover } from "@/lib/utils";
 
 export async function POST(request: Request) {
-  const { type, role, level, techstack, amount, userid } = await request.json();
-
   try {
+    const body = await request.json();
+    console.log("Received request body:", JSON.stringify(body, null, 2));
+    
+    // Handle both Vapi function call format and direct parameters
+    let type, role, level, techstack, amount, userid;
+    
+    if (body.message?.functionCall?.parameters) {
+      // Vapi function call format
+      const params = body.message.functionCall.parameters;
+      ({ type, role, level, techstack, amount, userid } = params);
+      console.log("Extracted from Vapi function call format");
+    } else {
+      // Direct parameters format
+      ({ type, role, level, techstack, amount, userid } = body);
+      console.log("Using direct parameters format");
+    }
+
+    // Validate required fields
+    if (!type || !role || !level || !techstack || !amount || !userid) {
+      return Response.json(
+        { 
+          success: false, 
+          error: "Missing required fields",
+          received: { type, role, level, techstack, amount, userid }
+        }, 
+        { status: 400 }
+      );
+    }
+
+    console.log("Generating questions with:", { type, role, level, techstack, amount, userid });
+
     const { text: questions } = await generateText({
-      model: google("gemini-2.0-flash-001"),
+      model: google("gemini-2.5-flash"),
       prompt: `Prepare questions for a job interview.
         The job role is ${role}.
         The job experience level is ${level}.
@@ -24,6 +53,8 @@ export async function POST(request: Request) {
         Thank you! <3
     `,
     });
+
+    console.log("Generated questions:", questions);
 
     const interview = {
       role: role,
@@ -41,8 +72,20 @@ export async function POST(request: Request) {
 
     return Response.json({ success: true }, { status: 200 });
   } catch (error) {
-    console.error("Error:", error);
-    return Response.json({ success: false, error: error }, { status: 500 });
+    console.error("Error in /api/vapi/generate:", {
+      error,
+      message: error instanceof Error ? error.message : "Unknown error",
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+    
+    return Response.json(
+      { 
+        success: false, 
+        error: error instanceof Error ? error.message : "Failed to generate interview questions",
+        details: error instanceof Error ? error.stack : String(error)
+      }, 
+      { status: 500 }
+    );
   }
 }
 
