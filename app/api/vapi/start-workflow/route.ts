@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-// Uncomment after installing: npm install @vapi-ai/server-sdk
-// import Vapi from "@vapi-ai/server-sdk";
+import { VapiClient } from "@vapi-ai/server-sdk";
 
 export async function POST(request: NextRequest) {
   try {
     const { workflowId, userId, userName } = await request.json();
+
+    console.log("Starting workflow with:", { workflowId, userId, userName });
 
     if (!workflowId) {
       return NextResponse.json(
@@ -13,52 +14,49 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Step 1: Install @vapi-ai/server-sdk
-    // Step 2: Get VAPI_SERVER_API_KEY from dashboard and add to .env.local
-    // Step 3: Uncomment the code below
-    
-    /*
-    const serverApiKey = process.env.VAPI_SERVER_API_KEY;
+    // Use web token for now (server token is different and requires separate API key)
+    const serverApiKey = process.env.VAPI_SERVER_API_KEY || process.env.NEXT_PUBLIC_VAPI_WEB_TOKEN;
     
     if (!serverApiKey) {
-      throw new Error("VAPI_SERVER_API_KEY is not configured");
+      console.error("VAPI_SERVER_API_KEY is not configured");
+      return NextResponse.json(
+        { 
+          error: "VAPI_SERVER_API_KEY is not configured",
+          instructions: "Get your server API key from Vapi dashboard and add VAPI_SERVER_API_KEY to .env.local"
+        },
+        { status: 500 }
+      );
     }
 
-    const vapi = new Vapi({ token: serverApiKey });
+    const vapi = new VapiClient({ token: serverApiKey });
 
     // Start a web call with the workflow
-    const call = await vapi.calls.createWebCall({
+    // For web calls, just pass workflowId and workflowOverrides directly
+    const call = await vapi.calls.create({
       workflowId: workflowId,
-      // Pass variables that the workflow expects
-      variableValues: {
-        userid: userId,
-        username: userName,
+      // Use workflowOverrides to pass variables to the workflow
+      workflowOverrides: {
+        variableValues: {
+          userid: userId,
+        },
       },
     });
 
+    console.log("Workflow call created:", call);
+
+    // The response type can be Call or CallBatchResponse
+    // For web calls, it returns a Call with webCallUrl
     return NextResponse.json({ 
       success: true,
-      webCallUrl: call.webCallUrl, // URL to connect to the call
-      callId: call.id,
+      call: call,
     });
-    */
-
-    return NextResponse.json(
-      { 
-        error: "Server SDK not yet configured",
-        instructions: [
-          "1. Run: npm install @vapi-ai/server-sdk",
-          "2. Get server API key from Vapi dashboard",
-          "3. Add VAPI_SERVER_API_KEY to .env.local",
-          "4. Uncomment the code in this file",
-        ]
-      },
-      { status: 501 }
-    );
   } catch (error) {
     console.error("Error starting workflow:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to start workflow" },
+      { 
+        error: error instanceof Error ? error.message : "Failed to start workflow",
+        details: error instanceof Error ? error.stack : String(error)
+      },
       { status: 500 }
     );
   }

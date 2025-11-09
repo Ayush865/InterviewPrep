@@ -64,35 +64,41 @@ const Agent = ({
     };
 
     const onError = (error: any) => {
-      console.error("VAPI Error:", {
-        error,
-        errorMessage: error?.message || "No error message",
-        errorType: typeof error,
-        errorConstructor: error?.constructor?.name,
-        errorString: String(error),
+      console.error("VAPI Error (full object):", error);
+      console.error("VAPI Error Details:", {
+        message: error?.message,
+        type: typeof error,
+        constructor: error?.constructor?.name,
+        keys: error ? Object.keys(error) : [],
+        stringified: JSON.stringify(error, null, 2),
       });
 
       // If it's a Response object, log the details
       if (error instanceof Response) {
-        console.error("VAPI Response Error Details:", {
+        console.error("VAPI Response Error:", {
           status: error.status,
           statusText: error.statusText,
           url: error.url,
-          // Don't try to read the body as it's already consumed by VAPI SDK
         });
       }
       
-      // Check if error has a data property (VAPI error format)
+      // Check for specific error types
       if (error?.data || error?.error) {
         console.error("VAPI Error Data:", error.data || error.error);
       }
-      
-      // Set user-friendly error message
-      const errorMessage = error instanceof Response 
-        ? `API Error ${error.status}: ${error.statusText || 'Bad Request'}. Please check the console for details.`
-        : error?.message || "An error occurred during the call. Please try again.";
-      
-      setError(errorMessage);
+
+      // Check if this is an ejection error (call ended by server)
+      if (error?.message?.includes("ejection") || error?.message?.includes("ended")) {
+        console.error("Call was ended by Vapi server - possible assistant configuration issue");
+        setError("The call was ended by the server. Please check your assistant configuration in the Vapi dashboard.");
+      } else {
+        // Set user-friendly error message
+        const errorMessage = error instanceof Response 
+          ? `API Error ${error.status}: ${error.statusText || 'Bad Request'}`
+          : error?.message || "An error occurred during the call. Please try again.";
+        
+        setError(errorMessage);
+      }
       
       // Reset call status on error
       setCallStatus(CallStatus.INACTIVE);
@@ -158,62 +164,29 @@ const Agent = ({
       }
 
       if (type === "generate") {
-        // IMPORTANT: The web SDK cannot start workflows directly.
-        // Workflows require the server SDK or an assistant that references the workflow.
+        const assistantId = process.env.NEXT_PUBLIC_VAPI_ASSISTANT_ID;
         
-        // Temporary workaround: Use an assistant that mimics the workflow behavior
-        console.warn("⚠️ Web SDK cannot start workflows directly. Using assistant fallback.");
-        
-        const workflowAssistant = {
-          name: "Interview Generator",
-          model: {
-            provider: "openai",
-            model: "gpt-4",
-            messages: [
-              {
-                role: "system",
-                content: `You are a voice assistant helping with creating new AI interviewers. Your task is to collect data from the user.
-                
-Ask the user for:
-1. Job experience level (Junior, Mid, Senior)
-2. Number of questions to generate
-3. Technologies to cover (e.g., React, Node.js, Python)
-4. Job role (e.g., Frontend, Backend, Full Stack)
-5. Interview type (Technical, Behavioral, or Mixed)
+        if (!assistantId) {
+          throw new Error("NEXT_PUBLIC_VAPI_ASSISTANT_ID is not defined");
+        }
 
-After collecting all information, confirm with the user and let them know you'll generate their interview.
+        if (!userName || !userId) {
+          throw new Error("Missing user information (userName or userId)");
+        }
 
-Remember this is a voice conversation - do not use any special characters.
-
-User ID: ${userId}
-Username: ${userName}`,
-              },
-            ],
-          },
-          voice: {
-            voiceId: "Elliot",
-            provider: "vapi",
-          },
-          firstMessage: "Hi! I'll help you create a custom AI interviewer. Let me ask you a few questions to personalize your interview.",
-          transcriber: {
-            provider: "deepgram",
-            model: "nova-2",
-            language: "en",
-          },
-          // Note: Tool calling would go here to trigger /api/vapi/generate
-          // For now, this is a placeholder until you set up proper workflow support
-        };
-
-        console.log("Starting workflow-like assistant with user context:", {
+        console.log("Starting assistant with Web SDK:", {
+          assistantId,
           userId,
           userName,
+          vapiInstance: !!vapi,
         });
 
-        await vapi.start(workflowAssistant as any, {
-          variableValues: {
-            userid: userId,
-            username: userName,
-          },
+        // Start assistant using standard Web SDK pattern
+        const call = await vapi.start(assistantId);
+        
+        console.log("Call started successfully:", {
+          callId: call?.id,
+          callStatus: call?.status,
         });
       } else {
         let formattedQuestions = "";
