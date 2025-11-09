@@ -3,8 +3,7 @@ import Image from "next/image";
 import { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import { currentUser } from "@clerk/nextjs/server";
-
-import SignOutButton from "@/components/SignOutButton";
+import { UserButton } from "@clerk/nextjs";
 
 const Layout = async ({ children }: { children: ReactNode }) => {
   const user = await currentUser();
@@ -18,7 +17,13 @@ const Layout = async ({ children }: { children: ReactNode }) => {
           <h2 className="text-primary-100">PrepWise</h2>
         </Link>
 
-        <SignOutButton />
+        <UserButton 
+          appearance={{
+            elements: {
+              avatarBox: "w-12 h-12",
+            },
+          }}
+        />
       </nav>
 
       {children}
