@@ -141,8 +141,13 @@ export async function getInterviewsByUserId(
     .orderBy("createdAt", "desc")
     .get();
 
-  return interviews.docs.map((doc) => ({
-    id: doc.id,
-    ...doc.data(),
-  })) as Interview[];
+  // Filter finalized interviews in-memory to avoid needing a composite index
+  const finalizedInterviews = interviews.docs
+    .filter((doc) => doc.data().finalized === true)
+    .map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    })) as Interview[];
+
+  return finalizedInterviews;
 }

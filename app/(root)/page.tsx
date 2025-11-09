@@ -13,14 +13,14 @@ import {
 async function Home() {
   const user = await getCurrentUser();
 
-  // Only fetch interviews if user is authenticated
-  const [userInterviews, allInterview] = await Promise.all([
+  // Fetch user's own interviews and all interviews from other users
+  const [userInterviews, allInterviews] = await Promise.all([
     user?.id ? getInterviewsByUserId(user.id) : Promise.resolve(null),
     user?.id ? getLatestInterviews({ userId: user.id }) : Promise.resolve(null),
   ]);
 
-  const hasPastInterviews = userInterviews?.length! > 0;
-  const hasUpcomingInterviews = allInterview?.length! > 0;
+  const hasUserInterviews = userInterviews && userInterviews.length > 0;
+  const hasAllInterviews = allInterviews && allInterviews.length > 0;
 
   return (
     <>
@@ -49,7 +49,7 @@ async function Home() {
         <h2>Your Interviews</h2>
 
         <div className="interviews-section">
-          {hasPastInterviews ? (
+          {hasUserInterviews ? (
             userInterviews?.map((interview) => (
               <InterviewCard
                 key={interview.id}
@@ -71,8 +71,8 @@ async function Home() {
         <h2>Take Interviews</h2>
 
         <div className="interviews-section">
-          {hasUpcomingInterviews ? (
-            allInterview?.map((interview) => (
+          {hasAllInterviews ? (
+            allInterviews?.map((interview) => (
               <InterviewCard
                 key={interview.id}
                 userId={user?.id}

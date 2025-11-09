@@ -181,12 +181,20 @@ const Agent = ({
           vapiInstance: !!vapi,
         });
 
-        // Start assistant using standard Web SDK pattern
-        const call = await vapi.start(assistantId);
+        // Start assistant and pass userId as a variable so the assistant
+        // can use it in API calls without asking the user
+        const call = await vapi.start(assistantId, {
+          variableValues: {
+            userid: userId,
+          },
+        });
         
         console.log("Call started successfully:", {
           callId: call?.id,
           callStatus: call?.status,
+          variablesSet: { userid: userId },
+          actualUserId: userId,
+          userIdType: typeof userId,
         });
       } else {
         let formattedQuestions = "";
