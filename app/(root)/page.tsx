@@ -1,22 +1,23 @@
 import Link from "next/link";
 import Image from "next/image";
+import { currentUser } from "@clerk/nextjs/server";
 
 import { Button } from "@/components/ui/button";
 import InterviewCard from "@/components/InterviewCard";
 
-import { getCurrentUser } from "@/lib/actions/auth.action";
 import {
   getInterviewsByUserId,
   getLatestInterviews,
 } from "@/lib/actions/general.action";
 
 async function Home() {
-  const user = await getCurrentUser();
+  const clerkUser = await currentUser();
+  const userId = clerkUser?.id;
 
   // Fetch user's own interviews and all interviews from other users
   const [userInterviews, allInterviews] = await Promise.all([
-    user?.id ? getInterviewsByUserId(user.id) : Promise.resolve(null),
-    user?.id ? getLatestInterviews({ userId: user.id }) : Promise.resolve(null),
+    userId ? getInterviewsByUserId(userId) : Promise.resolve(null),
+    userId ? getLatestInterviews({ userId }) : Promise.resolve(null),
   ]);
 
   const hasUserInterviews = userInterviews && userInterviews.length > 0;
@@ -53,7 +54,7 @@ async function Home() {
             userInterviews?.map((interview) => (
               <InterviewCard
                 key={interview.id}
-                userId={user?.id}
+                userId={userId}
                 interviewId={interview.id}
                 role={interview.role}
                 type={interview.type}
@@ -75,7 +76,7 @@ async function Home() {
             allInterviews?.map((interview) => (
               <InterviewCard
                 key={interview.id}
-                userId={user?.id}
+                userId={userId}
                 interviewId={interview.id}
                 role={interview.role}
                 type={interview.type}

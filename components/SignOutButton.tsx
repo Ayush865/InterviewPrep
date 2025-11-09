@@ -1,26 +1,18 @@
 "use client";
 
+import { useClerk } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
-import { signOut as firebaseSignOut } from "firebase/auth";
 
-import { auth } from "@/firebase/client";
-import { signOut } from "@/lib/actions/auth.action";
 import { Button } from "@/components/ui/button";
 
 const SignOutButton = () => {
+  const { signOut } = useClerk();
   const router = useRouter();
 
   const handleSignOut = async () => {
     try {
-      // Sign out from Firebase client
-      await firebaseSignOut(auth);
-      
-      // Clear server session cookie
       await signOut();
-      
-      // Redirect to sign-in page
       router.push("/sign-in");
-      router.refresh();
     } catch (error) {
       console.error("Error signing out:", error);
     }

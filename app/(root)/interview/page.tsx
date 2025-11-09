@@ -1,17 +1,16 @@
 import Agent from "@/components/Agent";
-import { getCurrentUser } from "@/lib/actions/auth.action";
+import { currentUser } from "@clerk/nextjs/server";
 
 const Page = async () => {
-  const user = await getCurrentUser();
+  const clerkUser = await currentUser();
 
   return (
     <>
       <h3>Interview generation</h3>
 
       <Agent
-        userName={user?.name!}
-        userId={user?.id}
-        profileImage={user?.profileURL}
+        userName={clerkUser?.firstName || clerkUser?.username || "User"}
+        userId={clerkUser?.id}
         type="generate"
       />
     </>

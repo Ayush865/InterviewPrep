@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { redirect } from "next/navigation";
+import { currentUser } from "@clerk/nextjs/server";
 
 import Agent from "@/components/Agent";
 import { getRandomInterviewCover } from "@/lib/utils";
@@ -8,20 +9,19 @@ import {
   getFeedbackByInterviewId,
   getInterviewById,
 } from "@/lib/actions/general.action";
-import { getCurrentUser } from "@/lib/actions/auth.action";
 import DisplayTechIcons from "@/components/DisplayTechIcons";
 
 const InterviewDetails = async ({ params }: RouteParams) => {
   const { id } = await params;
 
-  const user = await getCurrentUser();
+  const clerkUser = await currentUser();
 
   const interview = await getInterviewById(id);
   if (!interview) redirect("/");
 
   const feedback = await getFeedbackByInterviewId({
     interviewId: id,
-    userId: user?.id!,
+    userId: clerkUser?.id!,
   });
 
   return (
@@ -48,8 +48,8 @@ const InterviewDetails = async ({ params }: RouteParams) => {
       </div>
 
       <Agent
-        userName={user?.name!}
-        userId={user?.id}
+        userName={clerkUser?.firstName || clerkUser?.username || "User"}
+        userId={clerkUser?.id}
         interviewId={id}
         type="interview"
         questions={interview.questions}

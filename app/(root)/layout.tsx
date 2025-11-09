@@ -2,13 +2,13 @@ import Link from "next/link";
 import Image from "next/image";
 import { ReactNode } from "react";
 import { redirect } from "next/navigation";
+import { currentUser } from "@clerk/nextjs/server";
 
-import { isAuthenticated } from "@/lib/actions/auth.action";
 import SignOutButton from "@/components/SignOutButton";
 
 const Layout = async ({ children }: { children: ReactNode }) => {
-  const isUserAuthenticated = await isAuthenticated();
-  if (!isUserAuthenticated) redirect("/sign-in");
+  const user = await currentUser();
+  if (!user) redirect("/sign-in");
 
   return (
     <div className="root-layout">
