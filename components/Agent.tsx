@@ -158,27 +158,63 @@ const Agent = ({
       }
 
       if (type === "generate") {
-        const workflowId = process.env.NEXT_PUBLIC_VAPI_WORKFLOW_ID;
+        // IMPORTANT: The web SDK cannot start workflows directly.
+        // Workflows require the server SDK or an assistant that references the workflow.
         
-        console.log("=== STARTING WORKFLOW ===");
-        console.log("Workflow ID:", workflowId);
-        console.log("User ID:", userId);
-        console.log("User Name:", userName);
-        console.log("Token present:", !!process.env.NEXT_PUBLIC_VAPI_WEB_TOKEN);
+        // Temporary workaround: Use an assistant that mimics the workflow behavior
+        console.warn("⚠️ Web SDK cannot start workflows directly. Using assistant fallback.");
         
-        if (!workflowId) {
-          throw new Error("NEXT_PUBLIC_VAPI_WORKFLOW_ID is not set in environment variables");
-        }
+        const workflowAssistant = {
+          name: "Interview Generator",
+          model: {
+            provider: "openai",
+            model: "gpt-4",
+            messages: [
+              {
+                role: "system",
+                content: `You are a voice assistant helping with creating new AI interviewers. Your task is to collect data from the user.
+                
+Ask the user for:
+1. Job experience level (Junior, Mid, Senior)
+2. Number of questions to generate
+3. Technologies to cover (e.g., React, Node.js, Python)
+4. Job role (e.g., Frontend, Backend, Full Stack)
+5. Interview type (Technical, Behavioral, or Mixed)
 
-        // Start the workflow with userid as a variable
-        const result = await vapi.start(workflowId, {
+After collecting all information, confirm with the user and let them know you'll generate their interview.
+
+Remember this is a voice conversation - do not use any special characters.
+
+User ID: ${userId}
+Username: ${userName}`,
+              },
+            ],
+          },
+          voice: {
+            voiceId: "Elliot",
+            provider: "vapi",
+          },
+          firstMessage: "Hi! I'll help you create a custom AI interviewer. Let me ask you a few questions to personalize your interview.",
+          transcriber: {
+            provider: "deepgram",
+            model: "nova-2",
+            language: "en",
+          },
+          // Note: Tool calling would go here to trigger /api/vapi/generate
+          // For now, this is a placeholder until you set up proper workflow support
+        };
+
+        console.log("Starting workflow-like assistant with user context:", {
+          userId,
+          userName,
+        });
+
+        await vapi.start(workflowAssistant as any, {
           variableValues: {
-            userid: userId || "unknown",
+            userid: userId,
+            username: userName,
           },
         });
-        
-        console.log("Workflow started successfully");
-        console.log("Start result:", result);
       } else {
         let formattedQuestions = "";
         if (questions) {
@@ -198,17 +234,18 @@ const Agent = ({
         });
       }
     } catch (error: any) {
-      console.error("=== ERROR IN HANDLECALL ===");
-      console.error("Error type:", typeof error);
-      console.error("Error name:", error?.name);
-      console.error("Error message:", error?.message);
-      console.error("Error stack:", error?.stack);
-      console.error("Full error object:", error);
-      console.error("Error keys:", error ? Object.keys(error) : []);
+      console.error("Error starting call:", {
+        raw: error,
+        type: typeof error,
+        name: error?.name,
+        message: error?.message,
+        keys: error ? Object.keys(error) : [],
+        toString: String(error),
+      });
 
       setError(
         error?.message ||
-          "Failed to start the interview. Please check the console for details."
+          "Failed to start the interview. Please verify your Vapi Web Token and Workflow Id belong to the same project and try again."
       );
       setCallStatus(CallStatus.INACTIVE);
     }
