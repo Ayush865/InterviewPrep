@@ -4,17 +4,18 @@ import { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import { currentUser } from "@clerk/nextjs/server";
 import { UserButton } from "@clerk/nextjs";
-
 const Layout = async ({ children }: { children: ReactNode }) => {
   const user = await currentUser();
   if (!user) redirect("/sign-in");
 
   return (
     <div className="root-layout">
-      <nav className="flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2">
-          <Image src="/logo.svg" alt="MockMate Logo" width={38} height={32} />
-          <h2 className="text-primary-100">PrepWise</h2>
+      <nav className="flex items-center justify-between relative z-50">
+        <Link href="/" className="flex items-center justify-center gap-2">
+          <Image src="/logo.png" alt="MockMate Logo" width={70} height={70} />
+          <div className="pt-4">
+            <h2 className="text-primary-10">Hired <span className="text-orange">Fox</span></h2>
+          </div>
         </Link>
 
         <UserButton 
@@ -25,7 +26,6 @@ const Layout = async ({ children }: { children: ReactNode }) => {
           }}
         />
       </nav>
-
       {children}
     </div>
   );

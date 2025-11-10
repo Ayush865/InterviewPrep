@@ -53,7 +53,7 @@ const InterviewCard = async ({
 
           {/* Cover Image */}
           <Image
-            src={getRandomInterviewCover()}
+            src={getRandomInterviewCover(interviewId)}
             alt="cover-image"
             width={90}
             height={90}
@@ -84,7 +84,7 @@ const InterviewCard = async ({
           {/* Feedback or Placeholder Text */}
           <p className="line-clamp-2 mt-5">
             {feedback?.finalAssessment ||
-              "You haven't taken this interview yet. Take it now to improve your skills."}
+              "You haven’t taken this interview yet — start now to sharpen your skills."}
           </p>
         </div>
 
@@ -99,7 +99,7 @@ const InterviewCard = async ({
                   : `/interview/${interviewId}`
               }
             >
-              {feedback ? "Check Feedback" : "View Interview"}
+              {feedback ? "Check Feedback" : "Take Interview"}
             </Link>
           </Button>
         </div>

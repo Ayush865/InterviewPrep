@@ -50,6 +50,7 @@ const InterviewDetails = async ({ params }: RouteParams) => {
       <Agent
         userName={clerkUser?.firstName || clerkUser?.username || "User"}
         userId={clerkUser?.id}
+        userImage={clerkUser?.imageUrl}
         interviewId={id}
         type="interview"
         questions={interview.questions}

@@ -11,6 +11,7 @@ const Page = async () => {
       <Agent
         userName={clerkUser?.firstName || clerkUser?.username || "User"}
         userId={clerkUser?.id}
+        userImage={clerkUser?.imageUrl}
         type="generate"
       />
     </>

@@ -12,6 +12,8 @@
 
   --color-primary-100: #dddfff;
   --color-primary-200: #cac5fe;
+  
+  --color-orange: #ed5b23;
 
   --color-light-100: #d6e0ff;
   --color-light-400: #6870a6;
@@ -22,7 +24,7 @@
   --color-dark-200: #27282f;
   --color-dark-300: #242633;
 
-  --font-mona-sans: "Mona Sans", sans-serif;
+  --font-poppins: "Poppins", sans-serif;
 
   --bg-pattern: url("/pattern.png");
 }
@@ -175,7 +177,7 @@
     @apply flex min-h-14 w-full items-center justify-center gap-1.5 rounded-md;
   }
   .btn-primary {
-    @apply w-fit !bg-primary-200 !text-dark-100 hover:!bg-primary-200/80 !rounded-full !font-bold px-5 cursor-pointer min-h-10;
+    @apply w-fit !bg-orange !text-white hover:!bg-orange/80 !rounded-full !font-bold px-5 cursor-pointer min-h-10;
   }
   .btn-secondary {
     @apply w-fit !bg-dark-200 !text-primary-200 hover:!bg-dark-200/80 !rounded-full !font-bold px-5 cursor-pointer min-h-10;
@@ -266,7 +268,8 @@
   }
 
   .card-cta {
-    @apply flex flex-row blue-gradient-dark rounded-3xl px-16 py-6 items-center justify-between max-sm:px-4;
+    @apply flex flex-row  rounded-3xl px-16 py-6 items-center justify-between max-sm:px-4;
+    background-color: rgba(136, 136, 136, 0.65);
   }
 
   .interviews-section {
@@ -286,10 +289,10 @@
   }
 
   .card-interview {
-    @apply dark-gradient rounded-2xl min-h-full flex flex-col p-6 relative overflow-hidden gap-10 justify-between;
+    @apply dark-gradient rounded-2xl min-h-full flex flex-col p-6 relative overflow-hidden gap-10 justify-between ;
 
     .badge-text {
-      @apply text-sm font-semibold capitalize;
+      @apply text-sm font-semibold capitalize ;
     }
   }
 }
