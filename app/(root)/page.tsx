@@ -17,6 +17,15 @@ async function Home() {
   const clerkUser = await currentUser();
   const userId = clerkUser?.id;
 
+  // Log the userId for debugging
+  console.log("Dashboard - Logged in user ID:", userId);
+  console.log("Dashboard - Full Clerk user:", {
+    id: clerkUser?.id,
+    email: clerkUser?.emailAddresses?.[0]?.emailAddress,
+    firstName: clerkUser?.firstName,
+    username: clerkUser?.username,
+  });
+
   // Fetch user's own interviews and all interviews from other users
   const [userInterviews, allInterviews] = await Promise.all([
     userId ? getInterviewsByUserId(userId) : Promise.resolve(null),
