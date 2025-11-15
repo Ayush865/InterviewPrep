@@ -6,6 +6,32 @@ import { google } from "@ai-sdk/google";
 import { db } from "@/firebase/admin";
 import { feedbackSchema } from "@/constants";
 
+export async function addInterviewToUserMap(userId: string, interviewId: string) {
+  try {
+    const userRef = db.collection("users").doc(userId);
+    const userDoc = await userRef.get();
+
+    if (!userDoc.exists) {
+      console.error("User not found:", userId);
+      return { success: false, error: "User not found" };
+    }
+
+    // Create reference to the interview document
+    const interviewRef = db.collection("interviews").doc(interviewId);
+
+    // Add interview reference to user's interviews map
+    await userRef.update({
+      [`interviews.${interviewId}`]: interviewRef,
+    });
+
+    console.log(`Added interview reference ${interviewId} to user ${userId}'s map`);
+    return { success: true };
+  } catch (error) {
+    console.error("Error adding interview to user map:", error);
+    return { success: false, error };
+  }
+}
+
 export async function createFeedback(params: CreateFeedbackParams) {
   const { interviewId, userId, transcript, feedbackId } = params;
 
@@ -58,6 +84,9 @@ export async function createFeedback(params: CreateFeedbackParams) {
     }
 
     await feedbackRef.set(feedback);
+
+    // Add interview to user's interview map
+    await addInterviewToUserMap(userId, interviewId);
 
     return { success: true, feedbackId: feedbackRef.id };
   } catch (error) {
@@ -135,19 +164,60 @@ export async function getInterviewsByUserId(
     return null;
   }
 
-  const interviews = await db
-    .collection("interviews")
-    .where("userId", "==", userId)
-    .orderBy("createdAt", "desc")
-    .get();
+  try {
+    // Get user document to fetch interview references from the map
+    const userDoc = await db.collection("users").doc(userId).get();
+    
+    if (!userDoc.exists) {
+      console.warn("User not found:", userId);
+      return null;
+    }
 
-  // Filter finalized interviews in-memory to avoid needing a composite index
-  const finalizedInterviews = interviews.docs
-    .filter((doc) => doc.data().finalized === true)
-    .map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    })) as Interview[];
+    const userData = userDoc.data();
+    const interviewsMap = userData?.interviews || {};
+    
+    // Get interview references from the map
+    const interviewRefs = Object.values(interviewsMap);
 
-  return finalizedInterviews;
+    // If user has no interviews, return empty array
+    if (interviewRefs.length === 0) {
+      return [];
+    }
+
+    // Fetch all interviews using the references
+    const interviewPromises = interviewRefs.map(async (ref: any) => {
+      try {
+        // If ref is a DocumentReference, use .get()
+        if (ref && typeof ref.get === 'function') {
+          const interviewDoc = await ref.get();
+          if (interviewDoc.exists) {
+            return {
+              id: interviewDoc.id,
+              ...interviewDoc.data(),
+            } as Interview;
+          }
+        }
+        return null;
+      } catch (error) {
+        console.error("Error fetching interview reference:", error);
+        return null;
+      }
+    });
+
+    const interviews = await Promise.all(interviewPromises);
+    
+    // Filter out null values and sort by createdAt
+    const validInterviews = interviews
+      .filter((interview): interview is Interview => interview !== null)
+      .sort((a, b) => {
+        const dateA = new Date(a.createdAt || 0).getTime();
+        const dateB = new Date(b.createdAt || 0).getTime();
+        return dateB - dateA; // Sort descending (newest first)
+      });
+
+    return validInterviews;
+  } catch (error) {
+    console.error("Error fetching interviews by user ID:", error);
+    return null;
+  }
 }

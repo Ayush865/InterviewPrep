@@ -78,6 +78,7 @@ export async function POST(req: Request) {
         await userRef.set({
           email: primaryEmail.email_address,
           name: name,
+          interviews: {}, // Initialize empty interviews map
         })
         console.log('Created new user in Firebase:', {
           id,
@@ -86,10 +87,17 @@ export async function POST(req: Request) {
         })
       } else {
         // User exists, update if needed
-        await userRef.update({
+        const updateData: any = {
           email: primaryEmail.email_address,
           name: name,
-        })
+        }
+        
+        // Initialize interviews map if it doesn't exist
+        if (!userDoc.data()?.interviews) {
+          updateData.interviews = {}
+        }
+        
+        await userRef.update(updateData)
         console.log('Updated existing user in Firebase:', {
           id,
           email: primaryEmail.email_address,

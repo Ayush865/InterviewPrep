@@ -20,7 +20,7 @@ async function Home() {
   // Fetch user's own interviews and all interviews from other users
   const [userInterviews, allInterviews] = await Promise.all([
     userId ? getInterviewsByUserId(userId) : Promise.resolve(null),
-    userId ? getLatestInterviews({ userId }) : Promise.resolve(null),
+    userId ? getLatestInterviews({ userId, limit: 10 }) : Promise.resolve(null),
   ]);
 
   const hasUserInterviews = userInterviews && userInterviews.length > 0;
@@ -31,9 +31,10 @@ const words = `Master interview performance with AI-driven practice sessions`;
     <WavyBackground 
       className="mx-auto my-auto"
       containerClassName="h-full"
-      speed="fast"
-      waveWidth={40}
+      speed="slow"
+      waveWidth={50}
        colors={["#E9E3DF", "#ed5b23","#465C88","#E43636","#739EC9"]}
+       blur={10}
     >
       {/* <WavyBackground 
       className="mx-auto my-auto"
@@ -45,19 +46,19 @@ const words = `Master interview performance with AI-driven practice sessions`;
       speed="slow"
       waveOpacity={0.3}
     > */}
-      <section className="card-cta relative z-10 text-black">
+      <section className="card-cta relative z-10 text-white py-4">
 
         <div className="flex flex-col gap-6 max-w-lg ">    
           <TextGenerateEffect words={words} duration={1}/>
-          <p className="text-lg text-black ">
+          <p className="text-lg text-white ">
             Simulate real interview questions, receive immediate data-backed feedback, and improve reliably
           </p>
 
           <Button asChild className="btn-primary max-sm:w-full">
-            <Link href="/interview">Create Interview</Link>
+            <Link href="/interview">Generate Interview</Link>
           </Button>
         </div>
-
+        
         <Image
           src="/fox_on_computer.png"
           alt="robo-dude"

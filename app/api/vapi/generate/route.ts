@@ -37,12 +37,15 @@ export async function POST(request: Request) {
       console.log("Using direct parameters format");
     }
 
-    // Validate required fields
-    if (!type || !role || !level || !techstack || !amount || !userid) {
+    console.log("Raw userid received:", { userid, type: typeof userid, isNull: userid === null, isStringNull: userid === "NULL" });
+
+    // Validate required fields and check for "NULL" string
+    if (!type || !role || !level || !techstack || !amount || !userid || userid === "NULL" || userid === "null") {
+      console.error("Validation failed - Missing or invalid fields:", { type, role, level, techstack, amount, userid });
       return Response.json(
         { 
           success: false, 
-          error: "Missing required fields",
+          error: "Missing required fields or userid is NULL",
           received: { type, role, level, techstack, amount, userid }
         }, 
         { status: 400, headers: corsHeaders }
@@ -94,9 +97,26 @@ export async function POST(request: Request) {
       createdAt: new Date().toISOString(),
     };
 
-    await db.collection("interviews").add(interview);
+    const interviewRef = await db.collection("interviews").add(interview);
+    const interviewId = interviewRef.id;
+    
+    console.log("Interview created with ID:", interviewId);
+    
+    // Add interview reference to user's interview map
+    try {
+      await db.collection("users").doc(userid).update({
+        [`interviews.${interviewId}`]: interviewRef,
+      });
+      console.log(`Added interview reference ${interviewId} to user ${userid}'s map`);
+    } catch (error) {
+      console.error("Error updating user's interview map:", error);
+      // Don't fail the whole request if this fails
+    }
 
-    return Response.json({ success: true }, { status: 200, headers: corsHeaders });
+    return Response.json({ 
+      success: true, 
+      interviewId: interviewId 
+    }, { status: 200, headers: corsHeaders });
   } catch (error) {
     console.error("Error in /api/vapi/generate:", {
       error,

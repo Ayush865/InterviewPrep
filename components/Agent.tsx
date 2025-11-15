@@ -36,6 +36,7 @@ const Agent = ({
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [lastMessage, setLastMessage] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
+  const [generatedInterviewId, setGeneratedInterviewId] = useState<string | null>(null);
 
   useEffect(() => {
     const onCallStart = () => {
@@ -51,6 +52,17 @@ const Agent = ({
       if (message.type === "transcript" && message.transcriptType === "final") {
         const newMessage = { role: message.role, content: message.transcript };
         setMessages((prev) => [...prev, newMessage]);
+      }
+      
+      // Capture interview ID from function call result
+      if (message.type === "function-call-result") {
+        const result = message.functionCallResult?.result as any;
+        console.log("Function call result received:", result);
+        
+        if (result?.interviewId) {
+          console.log("Interview ID captured:", result.interviewId);
+          setGeneratedInterviewId(result.interviewId);
+        }
       }
     };
 
@@ -147,12 +159,20 @@ const Agent = ({
 
     if (callStatus === CallStatus.FINISHED) {
       if (type === "generate") {
-        router.push("/");
+        // Redirect to the generated interview page if we have the ID
+        if (generatedInterviewId) {
+          console.log("Redirecting to interview:", generatedInterviewId);
+          router.push(`/interview/${generatedInterviewId}`);
+        } else {
+          // Fallback to home if no interview ID was captured
+          console.warn("No interview ID captured, redirecting to home");
+          router.push("/");
+        }
       } else {
         handleGenerateFeedback(messages);
       }
     }
-  }, [messages, callStatus, feedbackId, interviewId, router, type, userId]);
+  }, [messages, callStatus, feedbackId, interviewId, router, type, userId, generatedInterviewId]);
 
   const handleCall = async () => {
     setCallStatus(CallStatus.CONNECTING);
@@ -175,6 +195,11 @@ const Agent = ({
           throw new Error("Missing user information (userName or userId)");
         }
 
+        // Validate userId is not "NULL" string
+        if (userId === "NULL" || userId === "null") {
+          throw new Error("userId is set to NULL - user authentication failed");
+        }
+
         console.log("Starting assistant with Web SDK:", {
           assistantId,
           userId,
@@ -186,7 +211,7 @@ const Agent = ({
         // can use it in API calls without asking the user
         const call = await vapi.start(assistantId, {
           variableValues: {
-            userid: userId,
+            userid: userId, // This passes the actual Clerk user ID
           },
         });
         
