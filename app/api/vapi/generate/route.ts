@@ -100,8 +100,6 @@ export async function POST(request: Request) {
     const interviewRef = await db.collection("interviews").add(interview);
     const interviewId = interviewRef.id;
     
-    console.log("Interview created with ID:", interviewId);
-    
     // Add interview reference to user's interview map
     try {
       await db.collection("users").doc(userid).update({
@@ -113,10 +111,7 @@ export async function POST(request: Request) {
       // Don't fail the whole request if this fails
     }
 
-    return Response.json({ 
-      success: true, 
-      interviewId: interviewId 
-    }, { status: 200, headers: corsHeaders });
+    return Response.json({ success: true }, { status: 200, headers: corsHeaders });
   } catch (error) {
     console.error("Error in /api/vapi/generate:", {
       error,

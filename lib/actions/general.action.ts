@@ -12,8 +12,20 @@ export async function addInterviewToUserMap(userId: string, interviewId: string)
     const userDoc = await userRef.get();
 
     if (!userDoc.exists) {
-      console.error("User not found:", userId);
-      return { success: false, error: "User not found" };
+      console.warn("User not found in Firebase, creating user document:", userId);
+      
+      // Create user document with the interview
+      const interviewRef = db.collection("interviews").doc(interviewId);
+      
+      await userRef.set({
+        interviews: {
+          [interviewId]: interviewRef,
+        },
+        createdAt: new Date().toISOString(),
+      });
+      
+      console.log(`Created user document and added interview ${interviewId} for user ${userId}`);
+      return { success: true };
     }
 
     // Create reference to the interview document
@@ -169,8 +181,21 @@ export async function getInterviewsByUserId(
     const userDoc = await db.collection("users").doc(userId).get();
     
     if (!userDoc.exists) {
-      console.warn("User not found:", userId);
-      return null;
+      console.warn("User not found in Firebase, creating user document:", userId);
+      
+      // Create user document with empty interviews map
+      try {
+        await db.collection("users").doc(userId).set({
+          interviews: {},
+          createdAt: new Date().toISOString(),
+        });
+        console.log("Created user document for:", userId);
+      } catch (createError) {
+        console.error("Error creating user document:", createError);
+      }
+      
+      // Return empty array since user has no interviews yet
+      return [];
     }
 
     const userData = userDoc.data();
@@ -219,5 +244,15 @@ export async function getInterviewsByUserId(
   } catch (error) {
     console.error("Error fetching interviews by user ID:", error);
     return null;
+  }
+}
+
+export async function getTotalInterviewCount(): Promise<number> {
+  try {
+    const snapshot = await db.collection("interviews").count().get();
+    return snapshot.data().count;
+  } catch (error) {
+    console.error("Error fetching total interview count:", error);
+    return 0;
   }
 }

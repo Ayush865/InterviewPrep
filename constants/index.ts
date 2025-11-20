@@ -190,18 +190,25 @@ export const feedbackSchema = z.object({
 });
 
 export const interviewCovers = [
-  "/adobe.png",
-  "/amazon.png",
-  "/facebook.png",
-  "/hostinger.png",
-  "/pinterest.png",
-  "/quora.png",
-  "/reddit.png",
-  "/skype.png",
-  "/spotify.png",
-  "/telegram.png",
-  "/tiktok.png",
-  "/yahoo.png",
+  "/Adobe.svg",
+  "/Amazon.svg",
+  "/Apple.svg",
+  "/Dell.svg",
+  "/Google.svg",
+  "/Meta.svg",
+  "/Microsoft.svg",
+  "/Netflix.png",
+  "/Nvidia.svg",
+  "/Tesla.svg",
+  "/Salesforce.svg",
+  "/Spotify.svg",
+  "/Twitter.svg",
+  "/Uber.svg",
+  "/Atlassian.svg",
+  "/LinkedIn.svg",
+  "/Stripe.svg",
+  "/PayPal.svg",
+  "/X.svg"
 ];
 
 export const dummyInterviews: Interview[] = [

@@ -8,10 +8,10 @@ const Page = async () => {
 
   return (
     <>
-      <div className="flex items-center gap-4 mb-6">
-        <Button asChild className="btn-secondary">
+      <div className="flex items-center gap-4 mb-1 ml-1 text-lg justify-center">
+        {/* <Button asChild className="btn-secondary">
           <Link href="/">←</Link>
-        </Button>
+        </Button> */}
         <h3>Interview generation</h3>
       </div>
 

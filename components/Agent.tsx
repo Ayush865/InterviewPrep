@@ -36,48 +36,41 @@ const Agent = ({
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [lastMessage, setLastMessage] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
-  const [generatedInterviewId, setGeneratedInterviewId] = useState<string | null>(null);
 
   useEffect(() => {
     const onCallStart = () => {
+      console.log("✅ Call started successfully");
       setCallStatus(CallStatus.ACTIVE);
       setError(null); // Clear any errors when call starts successfully
     };
 
     const onCallEnd = () => {
+      console.log("📞 Call ended");
       setCallStatus(CallStatus.FINISHED);
     };
 
     const onMessage = (message: Message) => {
+      console.log("📩 Message received:", message);
+      
       if (message.type === "transcript" && message.transcriptType === "final") {
         const newMessage = { role: message.role, content: message.transcript };
+        console.log("💬 Final transcript:", newMessage);
         setMessages((prev) => [...prev, newMessage]);
-      }
-      
-      // Capture interview ID from function call result
-      if (message.type === "function-call-result") {
-        const result = message.functionCallResult?.result as any;
-        console.log("Function call result received:", result);
-        
-        if (result?.interviewId) {
-          console.log("Interview ID captured:", result.interviewId);
-          setGeneratedInterviewId(result.interviewId);
-        }
       }
     };
 
     const onSpeechStart = () => {
-      console.log("speech start");
+      console.log("🗣️ Speech start");
       setIsSpeaking(true);
     };
 
     const onSpeechEnd = () => {
-      console.log("speech end");
+      console.log("🤐 Speech end");
       setIsSpeaking(false);
     };
 
     const onError = (error: any) => {
-      console.error("VAPI Error (full object):", error);
+      console.error("❌ VAPI Error (full object):", error);
       console.error("VAPI Error Details:", {
         message: error?.message,
         type: typeof error,
@@ -102,8 +95,14 @@ const Agent = ({
 
       // Check if this is an ejection error (call ended by server)
       if (error?.message?.includes("ejection") || error?.message?.includes("ended")) {
-        console.error("Call was ended by Vapi server - possible assistant configuration issue");
-        setError("The call was ended by the server. Please check your assistant configuration in the Vapi dashboard.");
+        console.error("⚠️ Call was ended by Vapi server (ejection)");
+        console.error("This usually means:");
+        console.error("1. Assistant configuration issue (check Vapi dashboard)");
+        console.error("2. Max duration reached");
+        console.error("3. Silence timeout triggered");
+        console.error("4. Model/API error occurred");
+        
+        setError("The interview ended unexpectedly. This may be due to configuration limits or timeouts. Please check the console for details.");
       } else {
         // Set user-friendly error message
         const errorMessage = error instanceof Response 
@@ -159,20 +158,12 @@ const Agent = ({
 
     if (callStatus === CallStatus.FINISHED) {
       if (type === "generate") {
-        // Redirect to the generated interview page if we have the ID
-        if (generatedInterviewId) {
-          console.log("Redirecting to interview:", generatedInterviewId);
-          router.push(`/interview/${generatedInterviewId}`);
-        } else {
-          // Fallback to home if no interview ID was captured
-          console.warn("No interview ID captured, redirecting to home");
-          router.push("/");
-        }
+        router.push("/");
       } else {
         handleGenerateFeedback(messages);
       }
     }
-  }, [messages, callStatus, feedbackId, interviewId, router, type, userId, generatedInterviewId]);
+  }, [messages, callStatus, feedbackId, interviewId, router, type, userId]);
 
   const handleCall = async () => {
     setCallStatus(CallStatus.CONNECTING);
@@ -270,10 +261,9 @@ const Agent = ({
         <div className="card-interviewer">
           <div className="avatar">
             <Image
-              src="/ai-avatar.png"
+              src={type==="generate"?"/ai-avatar.png":"/interviewer_female.png"}
               alt="profile-image"
-              width={65}
-              height={54}
+              fill
               className="object-cover"
             />
             {isSpeaking && <span className="animate-speak" />}
@@ -330,22 +320,36 @@ const Agent = ({
       <div className="w-full flex justify-center">
         {callStatus !== "ACTIVE" ? (
           <button className="relative btn-call" onClick={() => handleCall()}>
-            <span
-              className={cn(
-                "absolute animate-ping rounded-full opacity-75",
-                callStatus !== "CONNECTING" && "hidden"
-              )}
-            />
-
-            <span className="relative">
-              {callStatus === "INACTIVE" || callStatus === "FINISHED"
-                ? "Call"
-                : ". . ."}
-            </span>
+            {callStatus === "CONNECTING" ? (
+              <div className="flex items-center justify-center gap-2">
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                <span>Connecting...</span>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center gap-2">
+                <Image
+                  src="/call.svg"
+                  alt="call"
+                  width={20}
+                  height={20}
+                  className="object-contain"
+                />
+                <span>Start Call</span>
+              </div>
+            )}
           </button>
         ) : (
           <button className="btn-disconnect" onClick={() => handleDisconnect()}>
-            End
+            <div className="flex items-center justify-center gap-2">
+              <Image
+                src="/call_end.svg"
+                alt="end call"
+                width={20}
+                height={20}
+                className="object-contain"
+              />
+              <span>End Call</span>
+            </div>
           </button>
         )}
       </div>

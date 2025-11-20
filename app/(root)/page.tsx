@@ -9,40 +9,50 @@ import {WavyBackground} from "@/components/ui/wavy-background";
 import {
   getInterviewsByUserId,
   getLatestInterviews,
+  getTotalInterviewCount,
 } from "@/lib/actions/general.action";
 import { CometCard } from "@/components/ui/comet-card";
 import { HoverBorderGradient } from "@/components/ui/hover-border-gradient";
 import { TextGenerateEffect } from "@/components/ui/text-generate-effect";
+import ShinyText from '@/components/ShinyText';
+ import CountUp from '@/components/CountUp'
+ import { Carousel, Card } from "@/components/ui/apple-cards-carousel";
 async function Home() {
   const clerkUser = await currentUser();
   const userId = clerkUser?.id;
 
   // Log the userId for debugging
-  console.log("Dashboard - Logged in user ID:", userId);
-  console.log("Dashboard - Full Clerk user:", {
-    id: clerkUser?.id,
-    email: clerkUser?.emailAddresses?.[0]?.emailAddress,
-    firstName: clerkUser?.firstName,
-    username: clerkUser?.username,
-  });
+  // console.log("Dashboard - Logged in user ID:", userId);
+  // console.log("Dashboard - Full Clerk user:", {
+  //   id: clerkUser?.id,
+  //   email: clerkUser?.emailAddresses?.[0]?.emailAddress,
+  //   firstName: clerkUser?.firstName,
+  //   username: clerkUser?.username,
+  // });
 
   // Fetch user's own interviews and all interviews from other users
-  const [userInterviews, allInterviews] = await Promise.all([
+  const [userInterviews, allInterviews, totalInterviewCount] = await Promise.all([
     userId ? getInterviewsByUserId(userId) : Promise.resolve(null),
     userId ? getLatestInterviews({ userId, limit: 10 }) : Promise.resolve(null),
+    getTotalInterviewCount(),
   ]);
 
+  // Filter out user's interviews from the "Take Interviews" section
+  const userInterviewIds = new Set(userInterviews?.map(interview => interview.id) || []);
+  const filteredAllInterviews = allInterviews?.filter(interview => !userInterviewIds.has(interview.id)) || null;
+
   const hasUserInterviews = userInterviews && userInterviews.length > 0;
-  const hasAllInterviews = allInterviews && allInterviews.length > 0;
+  const hasAllInterviews = filteredAllInterviews && filteredAllInterviews.length > 0;
 const words = `Master interview performance with AI-driven practice sessions`;
+
   return (
     <>
     <WavyBackground 
       className="mx-auto my-auto"
-      containerClassName="h-full"
+      containerClassName="h-auto"
       speed="slow"
       waveWidth={50}
-       colors={["#E9E3DF", "#ed5b23","#465C88","#E43636","#739EC9"]}
+       colors={["#E9E3DF", "#ed5b23","#434bb6","#E43636","#739EC9"]}
        blur={10}
     >
       {/* <WavyBackground 
@@ -63,7 +73,7 @@ const words = `Master interview performance with AI-driven practice sessions`;
             Simulate real interview questions, receive immediate data-backed feedback, and improve reliably
           </p>
 
-          <Button asChild className="btn-primary max-sm:w-full">
+          <Button asChild className="btn-primary-generate max-sm:w-full">
             <Link href="/interview">Generate Interview</Link>
           </Button>
         </div>
@@ -77,7 +87,7 @@ const words = `Master interview performance with AI-driven practice sessions`;
         />
         
       </section>
-      </WavyBackground>
+      
       <div className="w-full absolute inset-0 h-screen z-0">
         <SparklesCore
           id="tsparticlesfullpage"
@@ -91,6 +101,33 @@ const words = `Master interview performance with AI-driven practice sessions`;
         />
       </div>
      
+      {/* Stats Section */}
+      {/* <div className="flex items-center justify-center mt-4 relative z-10">
+        <div className="card-cta backdrop-blur-sm border border-orange/30 px-4 py-3 rounded-2xl">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center justify-center w-16 h-16 rounded-full">
+              <span className="text-4xl">🎯</span>
+            </div>
+            <div>
+              <p className="text-4xl font-bold text-orange">
+               
+                <CountUp
+                  from={0}
+                  to={totalInterviewCount}
+                  separator=","
+                  direction="up"
+                  duration={1}
+                  className="count-up-text"
+                />
+                
+              </p>
+              <p className="text-light-100 text-sm">
+                interviews created by our community so far
+              </p>
+            </div>
+          </div>
+        </div>
+      </div> */}
 
       <section className="flex flex-col gap-6 mt-8 relative z-10">
         <h2>Your Interviews</h2>
@@ -99,7 +136,7 @@ const words = `Master interview performance with AI-driven practice sessions`;
           
           {hasUserInterviews ? (
             userInterviews?.map((interview) => (
-              <CometCard key={interview.id} rotateDepth={5} translateDepth={5}>
+              <CometCard key={interview.id} rotateDepth={5} translateDepth={5} className="interview-card-wrapper" >
               <InterviewCard
                 key={interview.id}
                 userId={userId}
@@ -123,8 +160,8 @@ const words = `Master interview performance with AI-driven practice sessions`;
 
         <div className="interviews-section">
           {hasAllInterviews ? (
-            allInterviews?.map((interview) => (
-              <CometCard key={interview.id} rotateDepth={5} translateDepth={5}>
+            filteredAllInterviews?.map((interview) => (
+              <CometCard key={interview.id} rotateDepth={5} translateDepth={5} className="w-[360px] interview-card-wrapper ">
               <InterviewCard
                 key={interview.id}
                 userId={userId}
@@ -141,6 +178,17 @@ const words = `Master interview performance with AI-driven practice sessions`;
           )}
         </div>
       </section>
+
+      {/* Footer */}
+      <footer className="absolute z-10 mt-16 py-6 border-t border-white/10 w-full">
+        <div className="flex items-center justify-center">
+          <p className="text-light-100 text-base">
+            Made with <span className="text-red-500 animate-pulse">❤️</span> by{" "}
+            <span className="font-semibold text-orange">Ayush Prakash</span>
+          </p>
+        </div>
+      </footer>
+      </WavyBackground>
     </>
   );
 }

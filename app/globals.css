@@ -5,8 +5,8 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme {
-  --color-success-100: #49de50;
-  --color-success-200: #42c748;
+  --color-success-100: #28a745;
+  --color-success-200: #218838;
   --color-destructive-100: #f75353;
   --color-destructive-200: #c44141;
 
@@ -15,6 +15,7 @@
   
   --color-orange: #ed5b23;
   --color-cream : #F5F1DC;
+  --color-slate-purple: #434bb6;
 
   --color-light-100: #d6e0ff;
   --color-light-400: #6870a6;
@@ -163,7 +164,7 @@
 
 @layer components {
   .btn-call {
-    @apply inline-block px-7 py-3 font-bold text-sm leading-5 text-white transition-colors duration-150 bg-success-100 border border-transparent rounded-full shadow-sm focus:outline-none focus:shadow-2xl active:bg-success-200 hover:bg-success-200 min-w-28 cursor-pointer items-center justify-center overflow-visible;
+    @apply inline-block px-7 py-3 font-bold text-sm leading-5 text-white transition-colors duration-15 bg-success-100 border border-transparent rounded-full shadow-sm focus:outline-none focus:shadow-2xl active:bg-success-200 hover:bg-success-200 min-w-28 cursor-pointer items-center justify-center overflow-visible;
 
     .span {
       @apply bg-success-100 h-[85%] w-[65%];
@@ -178,7 +179,10 @@
     @apply flex min-h-14 w-full items-center justify-center gap-1.5 rounded-md;
   }
   .btn-primary {
-    @apply w-fit !bg-cream  hover:!bg-orange/80 !rounded-full !font-bold px-5 cursor-pointer min-h-10 text-black;
+    @apply w-fit !bg-cream  hover:!bg-slate-purple/80 hover:!text-white !rounded-full !font-bold px-5 cursor-pointer min-h-10 text-black transition-all duration-300;
+  }
+    .btn-primary-generate {
+    @apply w-fit !bg-cream  hover:!bg-orange/80 hover:!text-white !rounded-full !font-bold px-5 cursor-pointer min-h-10 text-black transition-all duration-300;
   }
   .btn-secondary {
     @apply w-fit !bg-dark-200 !text-primary-200 hover:!bg-dark-200/80 !rounded-full !font-bold px-5 cursor-pointer min-h-10;
@@ -220,11 +224,11 @@
     }
 
     .card-interviewer {
-      @apply flex-center flex-col gap-2 p-7 h-[400px] blue-gradient-dark rounded-lg border-2 border-primary-200/50 flex-1 sm:basis-1/2 w-full;
+      @apply flex-center flex-col gap-2 p-7 h-[400px] blue-gradient-dark rounded-lg border-2 border-primary-200/50 flex-1 sm:basis-1/2 w-full overflow-hidden;
     }
 
     .avatar {
-      @apply z-10 flex items-center justify-center blue-gradient rounded-full size-[120px] relative;
+      @apply z-10 flex items-center justify-center blue-gradient rounded-full size-[120px] relative overflow-hidden;
 
       .animate-speak {
         @apply absolute inline-flex size-5/6 animate-ping rounded-full bg-primary-200 opacity-75;
@@ -277,6 +281,18 @@
     @apply flex flex-wrap gap-4 max-lg:flex-col w-full items-stretch;
   }
 
+  /* Hover blur effect for interview cards */
+  .interviews-section:has(.interview-card-wrapper:hover) .interview-card-wrapper:not(:hover) {
+    filter: blur(1px);
+    opacity: 0.6;
+    transform: scale(0.95);
+    transition: filter 0.3s ease, opacity 0.3s ease, transform 0.3s ease;
+  }
+
+  .interview-card-wrapper {
+    transition: filter 0.3s ease, opacity 0.3s ease, transform 0.3s ease;
+  }
+
   .interview-text {
     @apply text-lg text-center text-white;
   }
@@ -286,11 +302,22 @@
   }
 
   .tech-tooltip {
-    @apply absolute bottom-full mb-1 hidden group-hover:flex px-2 py-1 text-xs text-white bg-gray-700 rounded-md shadow-md;
+    @apply absolute bottom-full mb-1 px-2 py-1 text-xs text-white bg-gray-700 rounded-md shadow-md whitespace-nowrap max-w-xs z-50;
+    opacity: 0;
+    transform: translateY(5px);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    pointer-events: none;
+    display: flex;
+  }
+
+  .group:hover .tech-tooltip {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
   }
 
   .card-interview {
-    @apply dark-gradient rounded-2xl min-h-full flex flex-col p-6 relative overflow-hidden gap-10 justify-between ;
+    @apply dark-gradient rounded-2xl min-h-full flex flex-col p-6 relative gap-10 justify-between ;
 
     .badge-text {
       @apply text-sm font-semibold capitalize ;

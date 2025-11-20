@@ -65,7 +65,7 @@ export const SparklesCore = (props: ParticlesProps) => {
               },
             },
             fullScreen: {
-              enable: false,
+              enable: true,
               zIndex: 1,
             },
 
@@ -208,7 +208,7 @@ export const SparklesCore = (props: ParticlesProps) => {
                   max: 1,
                 },
                 spin: {
-                  acceleration: 0,
+                  acceleration: 0.1,
                   enable: false,
                 },
                 straight: false,
@@ -336,19 +336,19 @@ export const SparklesCore = (props: ParticlesProps) => {
               },
               twinkle: {
                 lines: {
-                  enable: false,
+                  enable: true,
                   frequency: 0.05,
                   opacity: 1,
                 },
                 particles: {
-                  enable: false,
+                  enable: true,
                   frequency: 0.05,
                   opacity: 1,
                 },
               },
               wobble: {
                 distance: 5,
-                enable: false,
+                enable: true,
                 speed: {
                   angle: 50,
                   move: 10,
@@ -358,11 +358,11 @@ export const SparklesCore = (props: ParticlesProps) => {
                 count: 0,
                 delay: {
                   value: 0,
-                  sync: false,
+                  sync: true,
                 },
                 duration: {
                   value: 0,
-                  sync: false,
+                  sync: true,
                 },
               },
               rotate: {

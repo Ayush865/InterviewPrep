@@ -28,9 +28,10 @@ const InterviewCard = async ({
 
   const badgeColor =
     {
-      Behavioral: "bg-light-400",
-      Mixed: "bg-light-600",
-      Technical: "bg-light-800",
+      Behavioral: "bg-slate-purple",
+      Mixed: "bg-slate-purple",
+      Technical: "bg-slate-purple",
+      "System Design": "bg-slate-purple",
     }[normalizedType] || "bg-light-600";
 
   const formattedDate = dayjs(
@@ -38,26 +39,25 @@ const InterviewCard = async ({
   ).format("MMM D, YYYY");
 
   return (
-    <div className="card-border w-[360px] max-sm:w-full min-h-96">
-      <div className="card-interview">
-        <div>
+    <div className="card-border w-[360px] max-sm:w-full h-[400px]">
+      <div className="card-interview h-full flex flex-col justify-between">
+        <div className="flex-1">
           {/* Type Badge */}
           <div
             className={cn(
-              "absolute top-0 right-0 w-fit px-4 py-2 rounded-bl-lg",
-              badgeColor
+              "absolute top-0 right-0 w-fit px-4 py-2 rounded-bl-lg rounded-tr-lg  bg-slate-purple"
             )}
           >
-            <p className="badge-text ">{normalizedType}</p>
+            <p className="badge-text text-white">{normalizedType}</p>
           </div>
 
           {/* Cover Image */}
           <Image
             src={getRandomInterviewCover(interviewId)}
             alt="cover-image"
-            width={90}
-            height={90}
-            className="rounded-full object-fit size-[90px]"
+            width={60}
+            height={60}
+            className="object-contain size-[60px]"
           />
 
           {/* Interview Role */}
@@ -76,7 +76,7 @@ const InterviewCard = async ({
             </div>
 
             <div className="flex flex-row gap-2 items-center">
-              <Image src="/star.svg" width={22} height={22} alt="star" />
+              <Image src="/Rating.svg" width={22} height={22} alt="star" />
               <p>{feedback?.totalScore || "---"}/100</p>
             </div>
           </div>
@@ -84,7 +84,7 @@ const InterviewCard = async ({
           {/* Feedback or Placeholder Text */}
           <p className="line-clamp-2 mt-5">
             {feedback?.finalAssessment ||
-              "You haven’t taken this interview yet — start now to sharpen your skills."}
+              "You haven’t taken this interview yet"}
           </p>
         </div>
 
