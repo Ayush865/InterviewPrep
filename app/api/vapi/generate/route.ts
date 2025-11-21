@@ -66,6 +66,31 @@ export async function POST(request: Request) {
       );
     }
 
+    // Check user's premium status and interview count
+    const userDoc = await db.collection("users").doc(userid).get();
+    if (userDoc.exists) {
+      const userData = userDoc.data();
+      const isPremium = userData?.premium_user === true;
+      const interviews = userData?.interviews || {};
+      const interviewCount = Object.keys(interviews).length;
+
+      console.log(`[DEBUG] User ${userid} Data:`, JSON.stringify(userData, null, 2));
+      console.log(`[DEBUG] Check: Premium=${isPremium}, InterviewsCount=${interviewCount}, InterviewsKeys=${Object.keys(interviews)}`);
+
+      if (!isPremium && interviewCount >= 1) {
+        console.warn(`[DEBUG] User ${userid} reached interview generation limit (Non-Premium)`);
+        return Response.json(
+          { 
+            success: false, 
+            error: "Free plan limit reached. You can only generate 1 interview. Upgrade to Premium for unlimited access."
+          }, 
+          { status: 403, headers: corsHeaders }
+        );
+      }
+    } else {
+      console.log(`[DEBUG] User ${userid} not found in DB during check`);
+    }
+
     const { text: questions } = await generateText({
       model: google("gemini-2.5-flash"),
       prompt: `Prepare questions for a job interview.
@@ -102,9 +127,28 @@ export async function POST(request: Request) {
     
     // Add interview reference to user's interview map
     try {
-      await db.collection("users").doc(userid).update({
-        [`interviews.${interviewId}`]: interviewRef,
-      });
+      const userRef = db.collection("users").doc(userid);
+      await userRef.set({
+        interviews: {
+          [interviewId]: interviewRef,
+        },
+        // Ensure premium_user is set if creating for the first time, but don't overwrite if exists
+        // Note: merge: true with set will merge top-level fields. 
+        // If we want to set premium_user only if missing, we might need a check or just rely on the fact that 
+        // if we are here, the user might not exist.
+        // However, if the user DOES exist, we don't want to overwrite premium_user to false if it was true.
+        // But wait, if the user exists, we just want to add to interviews.
+        // If the user does NOT exist, we want to create with premium_user: false.
+      }, { merge: true });
+      
+      // Double check if premium_user needs to be initialized (if it was just created)
+      // Since we can't conditionally set a field in a merge based on existence in one go easily without a transaction or pre-check.
+      // Let's do a pre-check since we already did one at the top (userDoc).
+      
+      if (!userDoc.exists) {
+         await userRef.set({ premium_user: false, feedbacks: {} }, { merge: true });
+      }
+
       console.log(`Added interview reference ${interviewId} to user ${userid}'s map`);
     } catch (error) {
       console.error("Error updating user's interview map:", error);

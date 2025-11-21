@@ -17,6 +17,8 @@ import { TextGenerateEffect } from "@/components/ui/text-generate-effect";
 import ShinyText from '@/components/ShinyText';
  import CountUp from '@/components/CountUp'
  import { Carousel, Card } from "@/components/ui/apple-cards-carousel";
+ import GenerateInterviewButton from "@/components/GenerateInterviewButton";
+ import { getUserPremiumStatus } from "@/lib/actions/premium.action";
 async function Home() {
   const clerkUser = await currentUser();
   const userId = clerkUser?.id;
@@ -31,11 +33,14 @@ async function Home() {
   // });
 
   // Fetch user's own interviews and all interviews from other users
-  const [userInterviews, allInterviews, totalInterviewCount] = await Promise.all([
+  const [userInterviews, allInterviews, totalInterviewCount, isPremium] = await Promise.all([
     userId ? getInterviewsByUserId(userId) : Promise.resolve(null),
     userId ? getLatestInterviews({ userId, limit: 10 }) : Promise.resolve(null),
     getTotalInterviewCount(),
+    userId ? getUserPremiumStatus(userId) : Promise.resolve(false),
   ]);
+
+  const interviewCount = userInterviews?.length || 0;
 
   // Filter out user's interviews from the "Take Interviews" section
   const userInterviewIds = new Set(userInterviews?.map(interview => interview.id) || []);
@@ -73,9 +78,10 @@ const words = `Master interview performance with AI-driven practice sessions`;
             Simulate real interview questions, receive immediate data-backed feedback, and improve reliably
           </p>
 
-          <Button asChild className="btn-primary-generate max-sm:w-full">
-            <Link href="/interview">Generate Interview</Link>
-          </Button>
+          <GenerateInterviewButton 
+            isPremium={isPremium} 
+            interviewCount={interviewCount} 
+          />
         </div>
         
         <Image
@@ -136,7 +142,7 @@ const words = `Master interview performance with AI-driven practice sessions`;
           
           {hasUserInterviews ? (
             userInterviews?.map((interview) => (
-              <CometCard key={interview.id} rotateDepth={5} translateDepth={5} className="interview-card-wrapper" >
+              <CometCard key={interview.id} rotateDepth={5} translateDepth={5} className="interview-card-wrapper w-[360px]" >
               <InterviewCard
                 key={interview.id}
                 userId={userId}
@@ -145,6 +151,7 @@ const words = `Master interview performance with AI-driven practice sessions`;
                 type={interview.type}
                 techstack={interview.techstack}
                 createdAt={interview.createdAt}
+                coverImage={interview.coverImage}
               />
               </CometCard>
             ))
@@ -170,6 +177,7 @@ const words = `Master interview performance with AI-driven practice sessions`;
                 type={interview.type}
                 techstack={interview.techstack}
                 createdAt={interview.createdAt}
+                coverImage={interview.coverImage}
               />
               </CometCard>
             ))

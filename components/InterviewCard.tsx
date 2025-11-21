@@ -7,6 +7,8 @@ import DisplayTechIcons from "./DisplayTechIcons";
 
 import { cn, getRandomInterviewCover } from "@/lib/utils";
 import { getFeedbackByInterviewId } from "@/lib/actions/general.action";
+import { getUserPremiumStatus, getUserFeedbackCount } from "@/lib/actions/premium.action";
+import TakeInterviewButton from "./TakeInterviewButton";
 
 const InterviewCard = async ({
   interviewId,
@@ -15,6 +17,7 @@ const InterviewCard = async ({
   type,
   techstack,
   createdAt,
+  coverImage,
 }: InterviewCardProps) => {
   const feedback =
     userId && interviewId
@@ -23,6 +26,14 @@ const InterviewCard = async ({
           userId,
         })
       : null;
+
+  // Fetch premium status and feedback count for limit checking
+  const [isPremium, feedbackCount] = userId
+    ? await Promise.all([
+        getUserPremiumStatus(userId),
+        getUserFeedbackCount(userId),
+      ])
+    : [false, 0];
 
   const normalizedType = /mix/gi.test(type) ? "Mixed" : type;
 
@@ -53,7 +64,7 @@ const InterviewCard = async ({
 
           {/* Cover Image */}
           <Image
-            src={getRandomInterviewCover(interviewId)}
+            src={coverImage || "/covers/Amazon.svg"}
             alt="cover-image"
             width={60}
             height={60}
@@ -91,17 +102,12 @@ const InterviewCard = async ({
         <div className="flex flex-row justify-between">
           <DisplayTechIcons techStack={techstack} />
 
-          <Button className="btn-primary">
-            <Link
-              href={
-                feedback
-                  ? `/interview/${interviewId}/feedback`
-                  : `/interview/${interviewId}`
-              }
-            >
-              {feedback ? "Check Feedback" : "Take Interview"}
-            </Link>
-          </Button>
+          <TakeInterviewButton
+            isPremium={isPremium}
+            feedbackCount={feedbackCount}
+            interviewId={interviewId || ""}
+            hasFeedback={!!feedback}
+          />
         </div>
       </div>
     </div>

@@ -79,6 +79,8 @@ export async function POST(req: Request) {
           email: primaryEmail.email_address,
           name: name,
           interviews: {}, // Initialize empty interviews map
+          feedbacks: {}, // Initialize empty feedbacks map
+          premium_user: false, // Default to non-premium
         })
         console.log('Created new user in Firebase:', {
           id,

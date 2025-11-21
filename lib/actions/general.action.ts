@@ -21,6 +21,8 @@ export async function addInterviewToUserMap(userId: string, interviewId: string)
         interviews: {
           [interviewId]: interviewRef,
         },
+        feedbacks: {},
+        premium_user: false,
         createdAt: new Date().toISOString(),
       });
       
@@ -41,6 +43,20 @@ export async function addInterviewToUserMap(userId: string, interviewId: string)
   } catch (error) {
     console.error("Error adding interview to user map:", error);
     return { success: false, error };
+  }
+}
+
+async function addFeedbackToUserMap(userId: string, feedbackId: string, feedbackRef: FirebaseFirestore.DocumentReference) {
+  try {
+    const userRef = db.collection("users").doc(userId);
+    await userRef.set({
+      feedbacks: {
+        [feedbackId]: feedbackRef,
+      },
+    }, { merge: true });
+    console.log(`Added feedback reference ${feedbackId} to user ${userId}'s map`);
+  } catch (error) {
+    console.error("Error adding feedback to user map:", error);
   }
 }
 
@@ -99,6 +115,9 @@ export async function createFeedback(params: CreateFeedbackParams) {
 
     // Add interview to user's interview map
     await addInterviewToUserMap(userId, interviewId);
+
+    // Add feedback to user's feedbacks map
+    await addFeedbackToUserMap(userId, feedbackRef.id, feedbackRef);
 
     return { success: true, feedbackId: feedbackRef.id };
   } catch (error) {
@@ -187,6 +206,8 @@ export async function getInterviewsByUserId(
       try {
         await db.collection("users").doc(userId).set({
           interviews: {},
+          feedbacks: {},
+          premium_user: false,
           createdAt: new Date().toISOString(),
         });
         console.log("Created user document for:", userId);
