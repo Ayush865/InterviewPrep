@@ -13,7 +13,7 @@ let pool: mysql.Pool | null = null;
 /**
  * Get or create MySQL connection pool
  */
-function getPool(): mysql.Pool {
+export function getPool(): mysql.Pool {
   if (!pool) {
     const connectionString = process.env.DATABASE_URL;
 

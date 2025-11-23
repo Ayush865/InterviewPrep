@@ -1,8 +1,9 @@
 import { generateText } from "ai";
 import { google } from "@ai-sdk/google";
 
-import { db } from "@/firebase/admin";
 import { getRandomInterviewCover } from "@/lib/utils";
+import { getUserById, getUserCounts, createInterview, createUser } from "@/lib/db-queries";
+import { logger } from "@/lib/logger";
 
 // Add CORS headers for Vapi to access this endpoint
 const corsHeaders = {
@@ -21,12 +22,8 @@ export async function OPTIONS() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    console.log("=== VAPI GENERATE DEBUG ===");
-    console.log("Full request body:", JSON.stringify(body, null, 2));
-    console.log("Body keys:", Object.keys(body));
-    console.log("Has message?:", !!body.message);
-    console.log("Has message.functionCall?:", !!body.message?.functionCall);
-    console.log("Has message.functionCall.parameters?:", !!body.message?.functionCall?.parameters);
+    logger.info("=== VAPI GENERATE DEBUG ===");
+    logger.info("Full request body:", JSON.stringify(body, null, 2));
 
     // Handle both Vapi function call format and direct parameters
     let type, role, level, techstack, amount, userid;
@@ -34,80 +31,77 @@ export async function POST(request: Request) {
     if (body.message?.functionCall?.parameters) {
       // Vapi function call format
       const params = body.message.functionCall.parameters;
-      console.log("Function call parameters:", JSON.stringify(params, null, 2));
+      logger.info("Function call parameters:", JSON.stringify(params, null, 2));
       ({ type, role, level, techstack, amount, userid } = params);
-      console.log("Extracted from Vapi function call format");
+      logger.info("Extracted from Vapi function call format");
     } else {
       // Direct parameters format
-      console.log("Direct body parameters:", JSON.stringify({ type: body.type, role: body.role, level: body.level, techstack: body.techstack, amount: body.amount, userid: body.userid }, null, 2));
       ({ type, role, level, techstack, amount, userid } = body);
-      console.log("Using direct parameters format");
+      logger.info("Using direct parameters format");
     }
 
-    console.log("=== EXTRACTED VALUES ===");
-    console.log("type:", type, typeof type);
-    console.log("role:", role, typeof role);
-    console.log("level:", level, typeof level);
-    console.log("techstack:", techstack, typeof techstack);
-    console.log("amount:", amount, typeof amount);
-    console.log("userid:", userid, typeof userid);
-    console.log("userid === null:", userid === null);
-    console.log("userid === 'NULL':", userid === "NULL");
-    console.log("userid === undefined:", userid === undefined);
-    console.log("========================");
+    logger.info("=== EXTRACTED VALUES ===");
+    logger.info(`type: ${type}, role: ${role}, level: ${level}, techstack: ${techstack}, amount: ${amount}, userid: ${userid}`);
 
     // Validate required fields and check for "NULL" string
     if (!type || !role || !level || !techstack || !amount || !userid || userid === "NULL" || userid === "null") {
-      console.error("Validation failed - Missing or invalid fields:", { type, role, level, techstack, amount, userid });
+      logger.error("Validation failed - Missing or invalid fields:", { type, role, level, techstack, amount, userid });
       return Response.json(
-        { 
-          success: false, 
+        {
+          success: false,
           error: "Missing required fields or userid is NULL",
           received: { type, role, level, techstack, amount, userid }
-        }, 
+        },
         { status: 400, headers: corsHeaders }
       );
     }
 
-    console.log("Generating questions with:", { type, role, level, techstack, amount, userid });
+    logger.info("Generating questions for user:", userid);
 
-    // Check if Firebase is properly initialized
-    if (!db) {
-      console.error("Firebase Admin DB is not initialized");
+    // Check user's premium status and interview count using MySQL
+    let user = await getUserById(userid);
+
+    // If user doesn't exist, create them (Clerk user not yet synced)
+    if (!user) {
+      logger.info(`[User Check] User ${userid} not found in MySQL, creating...`);
+      try {
+        user = await createUser({
+          id: userid,
+          name: 'User', // Default name, will be updated by Clerk webhook
+          email: `${userid}@temp.com`, // Temporary email, will be updated by Clerk webhook
+        });
+        logger.info(`[User Check] Created user ${userid} in MySQL`);
+      } catch (createError) {
+        logger.error(`[User Check] Error creating user ${userid}:`, createError);
+        return Response.json(
+          {
+            success: false,
+            error: "Failed to create user record. Please try again."
+          },
+          { status: 500, headers: corsHeaders }
+        );
+      }
+    }
+
+    // Check premium status and interview limit
+    const counts = await getUserCounts(userid);
+    const isPremium = user.premium_user === true;
+    const interviewCount = counts.interviewCount;
+
+    logger.info(`[User Check] User ${userid}: Premium=${isPremium}, Interviews=${interviewCount}`);
+
+    if (!isPremium && interviewCount >= 1) {
+      logger.warn(`[Limit] User ${userid} reached interview generation limit (Non-Premium)`);
       return Response.json(
-        { 
-          success: false, 
-          error: "Database connection failed. Check Firebase environment variables."
-        }, 
-        { status: 500, headers: corsHeaders }
+        {
+          success: false,
+          error: "Free plan limit reached. You can only generate 1 interview. Upgrade to Premium for unlimited access."
+        },
+        { status: 403, headers: corsHeaders }
       );
     }
 
-    // Check user's premium status and interview count
-    const userDoc = await db.collection("users").doc(userid).get();
-    if (userDoc.exists) {
-      const userData = userDoc.data();
-      const isPremium = userData?.premium_user === true;
-      const interviews = userData?.interviews || {};
-      const interviewCount = Object.keys(interviews).length;
-
-      console.log(`[DEBUG] User ${userid} Data:`, JSON.stringify(userData, null, 2));
-      console.log(`[DEBUG] Check: Premium=${isPremium}, InterviewsCount=${interviewCount}, InterviewsKeys=${Object.keys(interviews)}`);
-
-      if (!isPremium && interviewCount >= 1) {
-        console.warn(`[DEBUG] User ${userid} reached interview generation limit (Non-Premium)`);
-        return Response.json(
-          { 
-            success: false, 
-            error: "Free plan limit reached. You can only generate 1 interview. Upgrade to Premium for unlimited access."
-          }, 
-          { status: 403, headers: corsHeaders }
-        );
-      }
-    } else {
-      console.log(`[DEBUG] User ${userid} not found in DB during check`);
-    }
-
+    // Generate interview questions using AI
     const { text: questions } = await generateText({
       model: google("gemini-2.5-flash"),
       prompt: `Prepare questions for a job interview.
@@ -120,72 +114,41 @@ export async function POST(request: Request) {
         The questions are going to be read by a voice assistant so do not use "/" or "*" or any other special characters which might break the voice assistant.
         Return the questions formatted like this:
         ["Question 1", "Question 2", "Question 3"]
-        
+
         Thank you! <3
     `,
     });
 
-    console.log("Generated questions:", questions);
+    logger.info("[Interview] Generated questions successfully");
 
-    const interview = {
+    // Create interview in MySQL
+    const interview = await createInterview({
+      user_id: userid,
       role: role,
       type: type,
       level: level,
-      techstack: techstack.split(","),
+      techstack: techstack.split(",").map((t: string) => t.trim()),
       questions: JSON.parse(questions),
-      userId: userid,
       finalized: true,
-      coverImage: getRandomInterviewCover(),
-      createdAt: new Date().toISOString(),
-    };
+      cover_image: getRandomInterviewCover(),
+    });
 
-    const interviewRef = await db.collection("interviews").add(interview);
-    const interviewId = interviewRef.id;
-    
-    // Add interview reference to user's interview map
-    try {
-      const userRef = db.collection("users").doc(userid);
-      await userRef.set({
-        interviews: {
-          [interviewId]: interviewRef,
-        },
-        // Ensure premium_user is set if creating for the first time, but don't overwrite if exists
-        // Note: merge: true with set will merge top-level fields. 
-        // If we want to set premium_user only if missing, we might need a check or just rely on the fact that 
-        // if we are here, the user might not exist.
-        // However, if the user DOES exist, we don't want to overwrite premium_user to false if it was true.
-        // But wait, if the user exists, we just want to add to interviews.
-        // If the user does NOT exist, we want to create with premium_user: false.
-      }, { merge: true });
-      
-      // Double check if premium_user needs to be initialized (if it was just created)
-      // Since we can't conditionally set a field in a merge based on existence in one go easily without a transaction or pre-check.
-      // Let's do a pre-check since we already did one at the top (userDoc).
-      
-      if (!userDoc.exists) {
-         await userRef.set({ premium_user: false, feedbacks: {} }, { merge: true });
-      }
+    logger.info(`[Interview] Created interview ${interview.id} for user ${userid}`);
 
-      console.log(`Added interview reference ${interviewId} to user ${userid}'s map`);
-    } catch (error) {
-      console.error("Error updating user's interview map:", error);
-      // Don't fail the whole request if this fails
-    }
-
-    return Response.json({ success: true }, { status: 200, headers: corsHeaders });
+    return Response.json({ success: true, interviewId: interview.id }, { status: 200, headers: corsHeaders });
   } catch (error) {
-    console.error("Error in /api/vapi/generate:", {
+    logger.error("Error in /api/vapi/generate:", {
       error,
       message: error instanceof Error ? error.message : "Unknown error",
       stack: error instanceof Error ? error.stack : undefined,
     });
-    
+
     return Response.json(
-      { 
-        success: false, 
+      {
+        success: false,
         error: error instanceof Error ? error.message : "Failed to generate interview questions",
         details: error instanceof Error ? error.stack : String(error)
-      }, 
+      },
       { status: 500, headers: corsHeaders }
     );
   }
@@ -193,7 +156,7 @@ export async function POST(request: Request) {
 
 export async function GET() {
   return Response.json(
-    { success: true, data: "Thank you!" }, 
+    { success: true, data: "Thank you!" },
     { status: 200, headers: corsHeaders }
   );
 }

@@ -1,64 +1,41 @@
 "use server";
 
-import { auth, db } from "@/firebase/admin";
-import { cookies } from "next/headers";
+import { auth } from "@clerk/nextjs/server";
+import { getUserById, createUser, getUserByEmail } from "@/lib/db-queries";
+import { logger } from "@/lib/logger";
 
-// Session duration (1 week)
-const SESSION_DURATION = 60 * 60 * 24 * 7;
-
-// Set session cookie
-export async function setSessionCookie(idToken: string) {
-  const cookieStore = await cookies();
-
-  // Create session cookie
-  const sessionCookie = await auth.createSessionCookie(idToken, {
-    expiresIn: SESSION_DURATION * 1000, // milliseconds
-  });
-
-  // Set cookie in the browser
-  cookieStore.set("session", sessionCookie, {
-    maxAge: SESSION_DURATION,
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    sameSite: "lax",
-  });
-}
-
+/**
+ * Sign up a new user (called after Clerk creates the user)
+ * This syncs the Clerk user to our MySQL database
+ */
 export async function signUp(params: SignUpParams) {
   const { uid, name, email } = params;
 
   try {
-    // check if user exists in db
-    const userRecord = await db.collection("users").doc(uid).get();
-    if (userRecord.exists)
+    // Check if user exists in MySQL
+    const existingUser = await getUserById(uid);
+    if (existingUser) {
       return {
         success: false,
         message: "User already exists. Please sign in.",
       };
+    }
 
-    // save user to db
-    await db.collection("users").doc(uid).set({
+    // Create user in MySQL
+    await createUser({
+      id: uid,
       name,
       email,
-      // profileURL,
-      // resumeURL,
     });
+
+    logger.info(`[Auth] User created in MySQL: ${uid}`);
 
     return {
       success: true,
       message: "Account created successfully.",
     };
   } catch (error: any) {
-    console.error("Error creating user:", error);
-
-    // Handle Firebase specific errors
-    if (error.code === "auth/email-already-exists") {
-      return {
-        success: false,
-        message: "This email is already in use",
-      };
-    }
+    logger.error("[Auth] Error creating user:", error);
 
     return {
       success: false,
@@ -67,20 +44,30 @@ export async function signUp(params: SignUpParams) {
   }
 }
 
+/**
+ * Sign in user (Clerk handles authentication, we just verify user exists in DB)
+ */
 export async function signIn(params: SignInParams) {
-  const { email, idToken } = params;
+  const { email } = params;
 
   try {
-    const userRecord = await auth.getUserByEmail(email);
-    if (!userRecord)
+    // Verify user exists in MySQL
+    const user = await getUserByEmail(email);
+    if (!user) {
       return {
         success: false,
         message: "User does not exist. Create an account.",
       };
+    }
 
-    await setSessionCookie(idToken);
+    logger.info(`[Auth] User signed in: ${user.id}`);
+
+    return {
+      success: true,
+      message: "Signed in successfully.",
+    };
   } catch (error: any) {
-    console.log("");
+    logger.error("[Auth] Error signing in:", error);
 
     return {
       success: false,
@@ -89,44 +76,48 @@ export async function signIn(params: SignInParams) {
   }
 }
 
-// Sign out user by clearing the session cookie
-export async function signOut() {
-  const cookieStore = await cookies();
-
-  cookieStore.delete("session");
-}
-
-// Get current user from session cookie
+/**
+ * Get current user from Clerk session
+ */
 export async function getCurrentUser(): Promise<User | null> {
-  const cookieStore = await cookies();
-
-  const sessionCookie = cookieStore.get("session")?.value;
-  if (!sessionCookie) return null;
-
   try {
-    const decodedClaims = await auth.verifySessionCookie(sessionCookie, true);
+    const { userId } = await auth();
 
-    // get user info from db
-    const userRecord = await db
-      .collection("users")
-      .doc(decodedClaims.uid)
-      .get();
-    if (!userRecord.exists) return null;
+    if (!userId) {
+      return null;
+    }
+
+    // Get user from MySQL
+    const user = await getUserById(userId);
+    if (!user) {
+      logger.warn(`[Auth] Clerk user ${userId} not found in MySQL`);
+      return null;
+    }
 
     return {
-      ...userRecord.data(),
-      id: userRecord.id,
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      premium_user: user.premium_user,
     } as User;
   } catch (error) {
-    console.log(error);
-
-    // Invalid or expired session
+    logger.error("[Auth] Error getting current user:", error);
     return null;
   }
 }
 
-// Check if user is authenticated
-export async function isAuthenticated() {
-  const user = await getCurrentUser();
-  return !!user;
+/**
+ * Check if user is authenticated
+ */
+export async function isAuthenticated(): Promise<boolean> {
+  const { userId } = await auth();
+  return !!userId;
+}
+
+/**
+ * Get current user ID from Clerk
+ */
+export async function getCurrentUserId(): Promise<string | null> {
+  const { userId } = await auth();
+  return userId;
 }

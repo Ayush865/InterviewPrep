@@ -1,7 +1,9 @@
 import { Webhook } from 'svix'
 import { headers } from 'next/headers'
 import { WebhookEvent } from '@clerk/nextjs/server'
-import { db } from '@/firebase/admin'
+import { getUserById, createUser } from '@/lib/db-queries'
+import { logger } from '@/lib/logger'
+import { getPool } from '@/lib/db'
 
 export async function POST(req: Request) {
   // Get the webhook secret from environment variables
@@ -41,7 +43,7 @@ export async function POST(req: Request) {
       'svix-signature': svix_signature,
     }) as WebhookEvent
   } catch (err) {
-    console.error('Error verifying webhook:', err)
+    logger.error('Error verifying webhook:', err)
     return new Response('Error occurred', {
       status: 400,
     })
@@ -59,55 +61,46 @@ export async function POST(req: Request) {
     )
 
     if (!primaryEmail) {
-      console.error('No primary email found for user:', id)
+      logger.error('No primary email found for user:', id)
       return new Response('No primary email', { status: 400 })
     }
 
     // Create display name from available data
-    const name = first_name && last_name 
+    const name = first_name && last_name
       ? `${first_name} ${last_name}`
       : first_name || last_name || username || 'User'
 
     try {
-      // Check if user exists in Firebase
-      const userRef = db.collection('users').doc(id)
-      const userDoc = await userRef.get()
+      // Check if user exists in MySQL
+      const existingUser = await getUserById(id)
 
-      if (!userDoc.exists) {
-        // User doesn't exist, create new document
-        await userRef.set({
+      if (!existingUser) {
+        // User doesn't exist, create new user
+        await createUser({
+          id,
           email: primaryEmail.email_address,
           name: name,
-          interviews: {}, // Initialize empty interviews map
-          feedbacks: {}, // Initialize empty feedbacks map
-          premium_user: false, // Default to non-premium
         })
-        console.log('Created new user in Firebase:', {
+        logger.info('Created new user in MySQL:', {
           id,
           email: primaryEmail.email_address,
           name,
         })
       } else {
         // User exists, update if needed
-        const updateData: any = {
-          email: primaryEmail.email_address,
-          name: name,
-        }
-        
-        // Initialize interviews map if it doesn't exist
-        if (!userDoc.data()?.interviews) {
-          updateData.interviews = {}
-        }
-        
-        await userRef.update(updateData)
-        console.log('Updated existing user in Firebase:', {
+        const pool = getPool()
+        await pool.execute(
+          `UPDATE users SET email = ?, name = ?, updated_at = NOW() WHERE id = ?`,
+          [primaryEmail.email_address, name, id]
+        )
+        logger.info('Updated existing user in MySQL:', {
           id,
           email: primaryEmail.email_address,
           name,
         })
       }
     } catch (error) {
-      console.error('Error syncing user to Firebase:', error)
+      logger.error('Error syncing user to MySQL:', error)
       return new Response('Error syncing user', { status: 500 })
     }
   }

@@ -1,29 +1,30 @@
 "use server";
 
-import { db } from "@/firebase/admin";
+import { getUserById } from "@/lib/db-queries";
+import { getFeedbackCountByUser } from "@/lib/db-queries";
+import { logger } from "@/lib/logger";
+
+/**
+ * Get user's feedback count from MySQL
+ */
 export async function getUserFeedbackCount(userId: string): Promise<number> {
   try {
-    const userDoc = await db.collection("users").doc(userId).get();
-
-    if (!userDoc.exists) {
-      return 0;
-    }
-
-    const userData = userDoc.data();
-    const feedbacks = userData?.feedbacks || {};
-    return Object.keys(feedbacks).length;
+    return await getFeedbackCountByUser(userId);
   } catch (error) {
-    console.error("Error fetching user feedback count:", error);
+    logger.error("Error fetching user feedback count:", error);
     return 0;
   }
 }
 
+/**
+ * Get user's premium status from MySQL
+ */
 export async function getUserPremiumStatus(userId: string): Promise<boolean> {
   try {
-    const userDoc = await db.collection("users").doc(userId).get();
-    return userDoc.data()?.premium_user === true;
+    const user = await getUserById(userId);
+    return user?.premium_user === true;
   } catch (error) {
-    console.error("Error fetching user premium status:", error);
+    logger.error("Error fetching user premium status:", error);
     return false;
   }
 }
