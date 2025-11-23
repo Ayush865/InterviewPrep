@@ -83,12 +83,14 @@ export async function createUser(userData: {
   const pool = getPool();
 
   try {
-    await pool.execute(
+    console.log('[DB] Creating user:', userData.id, userData.email);
+    const result = await pool.execute(
       `INSERT INTO users (id, name, email, premium_user, created_at, updated_at)
        VALUES (?, ?, ?, false, NOW(), NOW())`,
       [userData.id, userData.name, userData.email]
     );
 
+    console.log('[DB] User created successfully:', userData.id, 'Result:', result);
     logger.info(`[DB] User created: ${userData.id}`);
 
     return {
@@ -100,6 +102,7 @@ export async function createUser(userData: {
       updated_at: new Date(),
     };
   } catch (error: any) {
+    console.error('[DB] Error creating user:', error);
     logger.error(`[DB] Error creating user:`, error);
     throw new Error(`Database error: ${error.message}`);
   }
@@ -112,10 +115,13 @@ export async function getUserById(userId: string): Promise<User | null> {
   const pool = getPool();
 
   try {
+    console.log('[DB] Checking if user exists:', userId);
     const [rows] = await pool.execute<mysql.RowDataPacket[]>(
       `SELECT * FROM users WHERE id = ?`,
       [userId]
     );
+
+    console.log('[DB] User lookup result:', rows.length > 0 ? 'Found' : 'Not found');
 
     if (rows.length === 0) {
       return null;
@@ -123,6 +129,7 @@ export async function getUserById(userId: string): Promise<User | null> {
 
     return rows[0] as User;
   } catch (error: any) {
+    console.error('[DB] Error fetching user:', error);
     logger.error(`[DB] Error fetching user:`, error);
     throw new Error(`Database error: ${error.message}`);
   }

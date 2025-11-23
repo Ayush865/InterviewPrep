@@ -53,6 +53,7 @@ export async function POST(req: Request) {
 
   // Handle the webhook
   const eventType = evt.type
+  console.log('[CLERK_WEBHOOK] Received event:', eventType, 'for user:', evt.data.id)
 
   if (eventType === 'user.created' || eventType === 'user.updated') {
     const { id, email_addresses, first_name, last_name, username } = evt.data
@@ -76,6 +77,7 @@ export async function POST(req: Request) {
     try {
       // Check if user exists in MySQL
       const existingUser = await getUserById(id)
+      console.log('[CLERK_WEBHOOK] User exists check:', existingUser ? 'YES' : 'NO')
 
       if (!existingUser) {
         // User doesn't exist, create new user
@@ -109,7 +111,10 @@ export async function POST(req: Request) {
       logger.error('Error syncing user to MySQL:', error)
       return new Response('Error syncing user', { status: 500 })
     }
+  } else {
+    console.log('[CLERK_WEBHOOK] Ignoring event type:', eventType)
   }
 
+  console.log('[CLERK_WEBHOOK] Webhook processed successfully')
   return new Response('Webhook processed successfully', { status: 200 })
 }

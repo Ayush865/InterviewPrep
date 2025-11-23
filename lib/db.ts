@@ -18,6 +18,7 @@ export function getPool(): mysql.Pool {
     const connectionString = process.env.DATABASE_URL;
 
     if (!connectionString) {
+      console.error('[DB] DATABASE_URL environment variable is not set');
       throw new Error('DATABASE_URL environment variable is not set');
     }
 
@@ -26,10 +27,13 @@ export function getPool(): mysql.Pool {
     const match = connectionString.match(/mysql:\/\/([^:]+):([^@]+)@([^:]+):(\d+)\/(.+)/);
 
     if (!match) {
+      console.error('[DB] Invalid DATABASE_URL format');
       throw new Error('Invalid DATABASE_URL format. Expected: mysql://user:password@host:port/database');
     }
 
     const [, user, password, host, port, database] = match;
+
+    console.log('[DB] Creating MySQL connection pool to:', host, database);
 
     pool = mysql.createPool({
       host,
@@ -46,6 +50,7 @@ export function getPool(): mysql.Pool {
       keepAliveInitialDelay: 0
     });
 
+    console.log('[DB] MySQL connection pool created successfully');
     logger.info('[DB] MySQL connection pool created');
   }
 
