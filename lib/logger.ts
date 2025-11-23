@@ -20,17 +20,32 @@ interface LogEntry {
 class Logger {
   private logFilePath: string;
   private logLevel: LogLevel;
+  private isServerless: boolean;
 
   constructor() {
+    // Detect if we're in a serverless environment
+    this.isServerless = !!(
+      process.env.VERCEL ||
+      process.env.AWS_LAMBDA_FUNCTION_NAME ||
+      process.env.LAMBDA_TASK_ROOT ||
+      process.env.NETLIFY
+    );
+
     const logsDir = path.join(process.cwd(), 'logs');
-
-    // Create logs directory if it doesn't exist
-    if (!fs.existsSync(logsDir)) {
-      fs.mkdirSync(logsDir, { recursive: true });
-    }
-
     this.logFilePath = path.join(logsDir, 'vapi-clone.log');
     this.logLevel = (process.env.LOG_LEVEL as LogLevel) || 'info';
+
+    // Only create logs directory in non-serverless environments
+    if (!this.isServerless) {
+      try {
+        if (!fs.existsSync(logsDir)) {
+          fs.mkdirSync(logsDir, { recursive: true });
+        }
+      } catch (error) {
+        // If we can't create the directory, assume serverless
+        this.isServerless = true;
+      }
+    }
   }
 
   private shouldLog(level: LogLevel): boolean {
@@ -65,15 +80,26 @@ class Logger {
   }
 
   private writeToFile(message: string): void {
+    // Skip file logging in serverless environments
+    if (this.isServerless) {
+      return;
+    }
+
     try {
       fs.appendFileSync(this.logFilePath, message + '\n', 'utf8');
     } catch (error) {
       // If file logging fails, only log to console
+      // Don't log the error itself to avoid recursion
       console.error('Failed to write to log file:', error);
     }
   }
 
   private log(level: LogLevel, message: string, data?: any): void {
+    // Skip all logging in serverless environments
+    if (this.isServerless) {
+      return;
+    }
+
     if (!this.shouldLog(level)) {
       return;
     }
@@ -170,6 +196,12 @@ class Logger {
    * Clear the log file
    */
   clearLogFile(): void {
+    // Skip in serverless environments
+    if (this.isServerless) {
+      console.warn('clearLogFile() called in serverless environment - skipping');
+      return;
+    }
+
     try {
       fs.writeFileSync(this.logFilePath, '', 'utf8');
       this.info('Log file cleared');
