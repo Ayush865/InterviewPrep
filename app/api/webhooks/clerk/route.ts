@@ -43,8 +43,10 @@ export async function POST(req: Request) {
       'svix-signature': svix_signature,
     }) as WebhookEvent
   } catch (err) {
+    // Always log webhook verification errors to console (even in production)
+    console.error('[CLERK_WEBHOOK] Signature verification failed:', err)
     logger.error('Error verifying webhook:', err)
-    return new Response('Error occurred', {
+    return new Response('Webhook signature verification failed', {
       status: 400,
     })
   }
@@ -61,6 +63,7 @@ export async function POST(req: Request) {
     )
 
     if (!primaryEmail) {
+      console.error('[CLERK_WEBHOOK] No primary email found for user:', id)
       logger.error('No primary email found for user:', id)
       return new Response('No primary email', { status: 400 })
     }
@@ -81,6 +84,7 @@ export async function POST(req: Request) {
           email: primaryEmail.email_address,
           name: name,
         })
+        console.log('[CLERK_WEBHOOK] Created new user:', id)
         logger.info('Created new user in MySQL:', {
           id,
           email: primaryEmail.email_address,
@@ -93,6 +97,7 @@ export async function POST(req: Request) {
           `UPDATE users SET email = ?, name = ?, updated_at = NOW() WHERE id = ?`,
           [primaryEmail.email_address, name, id]
         )
+        console.log('[CLERK_WEBHOOK] Updated existing user:', id)
         logger.info('Updated existing user in MySQL:', {
           id,
           email: primaryEmail.email_address,
@@ -100,6 +105,7 @@ export async function POST(req: Request) {
         })
       }
     } catch (error) {
+      console.error('[CLERK_WEBHOOK] Error syncing user to MySQL:', error)
       logger.error('Error syncing user to MySQL:', error)
       return new Response('Error syncing user', { status: 500 })
     }
