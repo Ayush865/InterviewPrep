@@ -1,9 +1,8 @@
 import { Webhook } from 'svix'
 import { headers } from 'next/headers'
 import { WebhookEvent } from '@clerk/nextjs/server'
-import { getUserById, createUser } from '@/lib/db-queries'
+import { getOrCreateUser } from '@/lib/db-queries'
 import { logger } from '@/lib/logger'
-import { getPool } from '@/lib/db'
 
 export async function POST(req: Request) {
   // Get the webhook secret from environment variables
@@ -53,14 +52,23 @@ export async function POST(req: Request) {
 
   // Handle the webhook
   const eventType = evt.type
-  console.log('[CLERK_WEBHOOK] Received event:', eventType, 'for user:', evt.data.id)
+  console.log('[CLERK_WEBHOOK] Received event:', eventType)
 
-  if (eventType === 'user.created' || eventType === 'user.updated') {
-    const { id, email_addresses, first_name, last_name, username } = evt.data
+  // Handle session.created events (when user logs in/signs up)
+  if (eventType === 'session.created') {
+    // User info is nested inside evt.data.user for session events
+    const user = (evt.data as any).user
+
+    if (!user) {
+      console.error('[CLERK_WEBHOOK] No user data in session event')
+      return new Response('No user data', { status: 400 })
+    }
+
+    const { id, email_addresses, first_name, last_name, username, primary_email_address_id } = user
 
     // Get primary email
     const primaryEmail = email_addresses.find(
-      (email) => email.id === evt.data.primary_email_address_id
+      (email: any) => email.id === primary_email_address_id
     )
 
     if (!primaryEmail) {
@@ -75,37 +83,15 @@ export async function POST(req: Request) {
       : first_name || last_name || username || 'User'
 
     try {
-      // Check if user exists in MySQL
-      const existingUser = await getUserById(id)
-      console.log('[CLERK_WEBHOOK] User exists check:', existingUser ? 'YES' : 'NO')
+      // Use atomic get-or-create operation
+      await getOrCreateUser({
+        id,
+        email: primaryEmail.email_address,
+        name: name,
+      })
 
-      if (!existingUser) {
-        // User doesn't exist, create new user
-        await createUser({
-          id,
-          email: primaryEmail.email_address,
-          name: name,
-        })
-        console.log('[CLERK_WEBHOOK] Created new user:', id)
-        logger.info('Created new user in MySQL:', {
-          id,
-          email: primaryEmail.email_address,
-          name,
-        })
-      } else {
-        // User exists, update if needed
-        const pool = getPool()
-        await pool.execute(
-          `UPDATE users SET email = ?, name = ?, updated_at = NOW() WHERE id = ?`,
-          [primaryEmail.email_address, name, id]
-        )
-        console.log('[CLERK_WEBHOOK] Updated existing user:', id)
-        logger.info('Updated existing user in MySQL:', {
-          id,
-          email: primaryEmail.email_address,
-          name,
-        })
-      }
+      console.log('[CLERK_WEBHOOK] User synced:', id)
+      logger.info('User synced from session webhook:', { id, email: primaryEmail.email_address })
     } catch (error) {
       console.error('[CLERK_WEBHOOK] Error syncing user to MySQL:', error)
       logger.error('Error syncing user to MySQL:', error)

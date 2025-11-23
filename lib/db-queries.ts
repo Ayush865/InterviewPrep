@@ -9,6 +9,7 @@ import { getPool } from './db';
 import { logger } from './logger';
 import mysql from 'mysql2/promise';
 import { v4 as uuidv4 } from 'uuid';
+import { cache } from 'react';
 
 // ============================================
 // HELPER FUNCTIONS
@@ -109,19 +110,69 @@ export async function createUser(userData: {
 }
 
 /**
- * Get user by ID
+ * Get existing user or create if doesn't exist (atomic operation)
+ * Handles race conditions and duplicate inserts gracefully
  */
-export async function getUserById(userId: string): Promise<User | null> {
+export async function getOrCreateUser(userData: {
+  id: string;
+  name: string;
+  email: string;
+}): Promise<User> {
   const pool = getPool();
 
   try {
-    console.log('[DB] Checking if user exists:', userId);
+    // First, try to get existing user
+    const existingUser = await getUserById(userData.id);
+
+    if (existingUser) {
+      return existingUser;
+    }
+
+    // User doesn't exist, try to create
+    try {
+      await pool.execute(
+        `INSERT INTO users (id, name, email, premium_user, created_at, updated_at)
+         VALUES (?, ?, ?, false, NOW(), NOW())`,
+        [userData.id, userData.name, userData.email]
+      );
+
+      logger.info(`[DB] User created: ${userData.id}`);
+
+      return {
+        id: userData.id,
+        name: userData.name,
+        email: userData.email,
+        premium_user: false,
+        created_at: new Date(),
+        updated_at: new Date(),
+      };
+    } catch (insertError: any) {
+      // Handle duplicate key error (race condition - another request created the user)
+      if (insertError.code === 'ER_DUP_ENTRY') {
+        const user = await getUserById(userData.id);
+        if (user) return user;
+      }
+      throw insertError;
+    }
+  } catch (error: any) {
+    console.error('[DB] Error in getOrCreateUser:', error);
+    logger.error(`[DB] Error in getOrCreateUser:`, error);
+    throw new Error(`Database error: ${error.message}`);
+  }
+}
+
+/**
+ * Get user by ID
+ * Cached to prevent duplicate queries during a single request
+ */
+export const getUserById = cache(async (userId: string): Promise<User | null> => {
+  const pool = getPool();
+
+  try {
     const [rows] = await pool.execute<mysql.RowDataPacket[]>(
       `SELECT * FROM users WHERE id = ?`,
       [userId]
     );
-
-    console.log('[DB] User lookup result:', rows.length > 0 ? 'Found' : 'Not found');
 
     if (rows.length === 0) {
       return null;
@@ -133,12 +184,13 @@ export async function getUserById(userId: string): Promise<User | null> {
     logger.error(`[DB] Error fetching user:`, error);
     throw new Error(`Database error: ${error.message}`);
   }
-}
+});
 
 /**
  * Get user by email
+ * Cached to prevent duplicate queries during a single request
  */
-export async function getUserByEmail(email: string): Promise<User | null> {
+export const getUserByEmail = cache(async (email: string): Promise<User | null> => {
   const pool = getPool();
 
   try {
@@ -156,7 +208,7 @@ export async function getUserByEmail(email: string): Promise<User | null> {
     logger.error(`[DB] Error fetching user by email:`, error);
     throw new Error(`Database error: ${error.message}`);
   }
-}
+});
 
 /**
  * Update user premium status
@@ -274,8 +326,9 @@ export async function createInterview(interviewData: {
 
 /**
  * Get interview by ID
+ * Cached to prevent duplicate queries during a single request
  */
-export async function getInterviewById(interviewId: string): Promise<Interview | null> {
+export const getInterviewById = cache(async (interviewId: string): Promise<Interview | null> => {
   const pool = getPool();
 
   try {
@@ -298,7 +351,7 @@ export async function getInterviewById(interviewId: string): Promise<Interview |
     logger.error(`[DB] Error fetching interview:`, error);
     throw new Error(`Database error: ${error.message}`);
   }
-}
+});
 
 /**
  * Get interviews by user ID

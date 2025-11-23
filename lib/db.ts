@@ -8,13 +8,17 @@
 import mysql from 'mysql2/promise';
 import { logger } from './logger';
 
-let pool: mysql.Pool | null = null;
+// Use globalThis to persist pool across hot reloads in development
+const globalForDb = globalThis as unknown as {
+  mysqlPool: mysql.Pool | undefined
+}
 
 /**
  * Get or create MySQL connection pool
+ * Uses globalThis to prevent connection exhaustion during hot reloads
  */
 export function getPool(): mysql.Pool {
-  if (!pool) {
+  if (!globalForDb.mysqlPool) {
     const connectionString = process.env.DATABASE_URL;
 
     if (!connectionString) {
@@ -33,28 +37,25 @@ export function getPool(): mysql.Pool {
 
     const [, user, password, host, port, database] = match;
 
-    console.log('[DB] Creating MySQL connection pool to:', host, database);
-
-    pool = mysql.createPool({
+    globalForDb.mysqlPool = mysql.createPool({
       host,
       port: parseInt(port, 10),
       user,
       password,
       database,
       waitForConnections: true,
-      connectionLimit: 10,
-      maxIdle: 10,
+      connectionLimit: 5, // Reduced from 10 to be more conservative
+      maxIdle: 3,
       idleTimeout: 60000,
       queueLimit: 0,
       enableKeepAlive: true,
       keepAliveInitialDelay: 0
     });
 
-    console.log('[DB] MySQL connection pool created successfully');
     logger.info('[DB] MySQL connection pool created');
   }
 
-  return pool;
+  return globalForDb.mysqlPool;
 }
 
 /**
@@ -329,9 +330,9 @@ export async function testConnection(): Promise<boolean> {
  * Call this during graceful shutdown
  */
 export async function closePool(): Promise<void> {
-  if (pool) {
-    await pool.end();
-    pool = null;
+  if (globalForDb.mysqlPool) {
+    await globalForDb.mysqlPool.end();
+    globalForDb.mysqlPool = undefined;
     logger.info('[DB] Connection pool closed');
   }
 }
