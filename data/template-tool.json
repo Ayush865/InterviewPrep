@@ -1,0 +1,75 @@
+{
+  "type": "apiRequest",
+  "function": {
+    "name": "api_request_tool",
+    "description": "send data in structured format to a api end point to generate interview for user "
+  },
+  "messages": [
+    {
+      "type": "request-start",
+      "blocking": false
+    },
+    {
+      "type": "request-failed",
+      "content": "Oops! Looks like something went wrong while sending the data to the app. Please try again.",
+      "endCallAfterSpokenEnabled": true
+    },
+    {
+      "role": "assistant",
+      "type": "request-complete",
+      "content": "The request has been sent and your interview has been generated. Thank you for the call!\nBye!",
+      "endCallAfterSpokenEnabled": true
+    }
+  ],
+  "name": "SendDataToGemini_v4",
+  "url": "https://interview-prep-m9qpi1lpd-ayush865s-projects-b0b3b22c.vercel.app/api/vapi/generate/",
+  "method": "POST",
+  "body": {
+    "type": "object",
+    "required": ["userid"],
+    "properties": {
+      "role": {
+        "description": "What role should would you like to train for? For example Frontend, Backend, Fullstack, Design, UX? ",
+        "type": "string",
+        "default": "Software Development Engineer"
+      },
+      "type": {
+        "description": "What type of the interview should it be? ",
+        "type": "string",
+        "default": "Technical"
+      },
+      "level": {
+        "description": "The job experience level. ",
+        "type": "string",
+        "default": "Junior"
+      },
+      "amount": {
+        "description": "The number of questions to be generated",
+        "type": "number",
+        "default": "1"
+      },
+      "userid": {
+        "description": "The userId of the user.",
+        "type": "string"
+      },
+      "techstack": {
+        "description": "Technologies to ask questions from ",
+        "type": "string",
+        "default": "React.js"
+      }
+    }
+  },
+  "variableExtractionPlan": {
+    "schema": {
+      "type": "object",
+      "required": ["userid"],
+      "properties": {
+        "userid": {
+          "type": "string",
+          "description": "The user ID extracted from variables"
+        }
+      }
+    },
+    "aliases": []
+  }
+}

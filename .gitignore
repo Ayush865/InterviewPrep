@@ -39,3 +39,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+vapi-create-tool-assistant.sh
+vapi_workflow.json
+
+# Vapi clone system logs
+/logs/*.log

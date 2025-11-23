@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import LimitReachedModal from "./LimitReachedModal";
@@ -15,9 +15,19 @@ const GenerateInterviewButton = ({
   interviewCount,
 }: GenerateInterviewButtonProps) => {
   const [showLimitModal, setShowLimitModal] = useState(false);
+  const [hasVapiCredentials, setHasVapiCredentials] = useState(false);
+
+  // Check if user has Vapi credentials in localStorage
+  useEffect(() => {
+    const assistantId = localStorage.getItem('vapi_custom_assistant_id');
+    const webToken = localStorage.getItem('vapi_web_token');
+    setHasVapiCredentials(!!(assistantId && webToken));
+  }, []);
+
+  const canGenerateUnlimited = isPremium || hasVapiCredentials;
 
   const handleClick = (e: React.MouseEvent) => {
-    if (!isPremium && interviewCount >= 1) {
+    if (!canGenerateUnlimited && interviewCount >= 1) {
       e.preventDefault();
       setShowLimitModal(true);
     }
@@ -26,7 +36,7 @@ const GenerateInterviewButton = ({
   return (
     <>
       <Button asChild className="btn-primary-generate max-sm:w-full" onClick={handleClick}>
-        <Link href={(!isPremium && interviewCount >= 1) ? "#" : "/interview"}>
+        <Link href={(!canGenerateUnlimited && interviewCount >= 1) ? "#" : "/interview"}>
           Generate Interview
         </Link>
       </Button>
@@ -34,8 +44,8 @@ const GenerateInterviewButton = ({
       <LimitReachedModal
         isOpen={showLimitModal}
         onClose={() => setShowLimitModal(false)}
-        messageLine1="You have reached the free plan limit of 1 generated interview."
-        messageLine2="Upgrade to Premium to generate unlimited interviews and master your skills!"
+        messageLine1="You have reached the free plan limit of 1 interview generation."
+        messageLine2="Upgrade to Premium or use your own Vapi API key to generate unlimited interviews!"
       />
     </>
   );

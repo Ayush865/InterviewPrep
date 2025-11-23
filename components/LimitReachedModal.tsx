@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { X, Lock } from "lucide-react";
+import Link from "next/link";
 
 interface LimitReachedModalProps {
   isOpen: boolean;
@@ -52,17 +53,24 @@ const LimitReachedModal = ({
             {messageLine2}
           </p>
           
-          <div className="flex gap-3 mt-2 justify-end">
-            <Button
-              variant="secondary"
-              onClick={onClose}
-              className="bg-dark-400 hover:bg-dark-500 text-white"
-            >
-              Cancel
-            </Button>
-            <Button className="bg-slate-purple hover:bg-cream hover:text-black text-white">
-              Upgrade to Premium
-            </Button>
+          <div className="flex flex-col gap-2 mt-2">
+            <div className="flex gap-3 justify-end">
+              <Button
+                variant="secondary"
+                onClick={onClose}
+                className="bg-dark-400 hover:bg-dark-500 text-white"
+              >
+                Cancel
+              </Button>
+              <Button className="bg-slate-purple hover:bg-cream hover:text-black text-white">
+                Upgrade to Premium
+              </Button>
+            </div>
+            <Link href="/settings/vapi" className="w-full">
+              <Button variant="outline" className="w-full border-blue-500 text-blue-400 hover:bg-blue-500/10">
+                Use My Vapi Key
+              </Button>
+            </Link>
           </div>
         </div>
       </div>

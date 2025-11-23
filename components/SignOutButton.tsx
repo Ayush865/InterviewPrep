@@ -11,6 +11,12 @@ const SignOutButton = () => {
 
   const handleSignOut = async () => {
     try {
+      // Clear Vapi credentials from localStorage
+      localStorage.removeItem('vapi_assistant_id');
+      localStorage.removeItem('vapi_tool_id');
+      localStorage.removeItem('vapi_web_token');
+      localStorage.removeItem('vapi_user_id');
+
       await signOut();
       router.push("/sign-in");
     } catch (error) {

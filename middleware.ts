@@ -5,6 +5,8 @@ const isPublicRoute = createRouteMatcher([
   '/sign-up(.*)',
   '/api/vapi/generate(.*)',
   '/api/vapi/start-workflow(.*)',
+  '/api/vapi/link(.*)',
+  '/api/vapi/clone(.*)',
   '/api/webhooks/clerk(.*)',
 ])
 

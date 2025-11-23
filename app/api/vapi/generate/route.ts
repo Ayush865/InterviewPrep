@@ -21,23 +21,40 @@ export async function OPTIONS() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    console.log("Received request body:", JSON.stringify(body, null, 2));
-    
+    console.log("=== VAPI GENERATE DEBUG ===");
+    console.log("Full request body:", JSON.stringify(body, null, 2));
+    console.log("Body keys:", Object.keys(body));
+    console.log("Has message?:", !!body.message);
+    console.log("Has message.functionCall?:", !!body.message?.functionCall);
+    console.log("Has message.functionCall.parameters?:", !!body.message?.functionCall?.parameters);
+
     // Handle both Vapi function call format and direct parameters
     let type, role, level, techstack, amount, userid;
-    
+
     if (body.message?.functionCall?.parameters) {
       // Vapi function call format
       const params = body.message.functionCall.parameters;
+      console.log("Function call parameters:", JSON.stringify(params, null, 2));
       ({ type, role, level, techstack, amount, userid } = params);
       console.log("Extracted from Vapi function call format");
     } else {
       // Direct parameters format
+      console.log("Direct body parameters:", JSON.stringify({ type: body.type, role: body.role, level: body.level, techstack: body.techstack, amount: body.amount, userid: body.userid }, null, 2));
       ({ type, role, level, techstack, amount, userid } = body);
       console.log("Using direct parameters format");
     }
 
-    console.log("Raw userid received:", { userid, type: typeof userid, isNull: userid === null, isStringNull: userid === "NULL" });
+    console.log("=== EXTRACTED VALUES ===");
+    console.log("type:", type, typeof type);
+    console.log("role:", role, typeof role);
+    console.log("level:", level, typeof level);
+    console.log("techstack:", techstack, typeof techstack);
+    console.log("amount:", amount, typeof amount);
+    console.log("userid:", userid, typeof userid);
+    console.log("userid === null:", userid === null);
+    console.log("userid === 'NULL':", userid === "NULL");
+    console.log("userid === undefined:", userid === undefined);
+    console.log("========================");
 
     // Validate required fields and check for "NULL" string
     if (!type || !role || !level || !techstack || !amount || !userid || userid === "NULL" || userid === "null") {

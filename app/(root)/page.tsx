@@ -78,9 +78,9 @@ const words = `Master interview performance with AI-driven practice sessions`;
             Simulate real interview questions, receive immediate data-backed feedback, and improve reliably
           </p>
 
-          <GenerateInterviewButton 
-            isPremium={isPremium} 
-            interviewCount={interviewCount} 
+          <GenerateInterviewButton
+            isPremium={isPremium}
+            interviewCount={interviewCount}
           />
         </div>
         

@@ -4,11 +4,11 @@ import { db } from "@/firebase/admin";
 export async function getUserFeedbackCount(userId: string): Promise<number> {
   try {
     const userDoc = await db.collection("users").doc(userId).get();
-    
+
     if (!userDoc.exists) {
       return 0;
     }
-    
+
     const userData = userDoc.data();
     const feedbacks = userData?.feedbacks || {};
     return Object.keys(feedbacks).length;
