@@ -44,4 +44,5 @@ vapi_workflow.json
 
 # Vapi clone system logs
 /logs/*.log
-/docs/*
+/docs/*VAPI_CLONE_IMPLEMENTATION.md
+VAPI_CLONE_QUICKSTART.md
