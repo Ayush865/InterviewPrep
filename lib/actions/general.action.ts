@@ -13,6 +13,7 @@ import {
   getInterviewsByUserId as getInterviewsByUserIdFromDB,
   getTotalInterviewCount as getTotalInterviewCountFromDB,
   getInterviewsWithFeedbackByUserId as getInterviewsWithFeedbackByUserIdFromDB,
+  getMostRecentInterviewByUserId,
 } from "@/lib/db-queries";
 import { logger } from "@/lib/logger";
 
@@ -82,7 +83,24 @@ export async function createFeedback(params: CreateFeedbackParams) {
 export async function getInterviewById(id: string): Promise<Interview | null> {
   try {
     const interview = await getInterviewByIdFromDB(id);
-    return interview as Interview | null;
+
+    if (!interview) {
+      return null;
+    }
+
+    // Map snake_case database fields to camelCase
+    return {
+      id: interview.id,
+      userId: interview.user_id,
+      role: interview.role,
+      type: interview.type,
+      level: interview.level,
+      techstack: interview.techstack,
+      questions: interview.questions,
+      finalized: interview.finalized,
+      coverImage: interview.cover_image,
+      createdAt: interview.created_at.toISOString(),
+    } as Interview;
   } catch (error) {
     logger.error(`[Interview] Error fetching interview ${id}:`, error);
     return null;
@@ -234,5 +252,31 @@ export async function getInterviewsTakenByUser(
   } catch (error) {
     logger.error("[Interview] Error fetching interviews taken by user:", error);
     return null;
+  }
+}
+
+/**
+ * Get the most recently created interview for a user
+ * Used to fetch interview ID after VAPI call ends
+ */
+export async function getLatestGeneratedInterview(
+  userId: string
+): Promise<{ success: boolean; interviewId?: string }> {
+  if (!userId) {
+    logger.warn("[Interview] getLatestGeneratedInterview called with empty userId");
+    return { success: false };
+  }
+
+  try {
+    const interview = await getMostRecentInterviewByUserId(userId, 1);
+
+    if (interview) {
+      return { success: true, interviewId: interview.id };
+    }
+
+    return { success: false };
+  } catch (error) {
+    logger.error("[Interview] Error fetching latest generated interview:", error);
+    return { success: false };
   }
 }

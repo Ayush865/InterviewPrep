@@ -8,9 +8,10 @@ import Vapi from "@vapi-ai/web";
 import { cn } from "@/lib/utils";
 import { vapi } from "@/lib/vapi.sdk";
 import { interviewer } from "@/constants";
-import { createFeedback } from "@/lib/actions/general.action";
+import { createFeedback, getLatestGeneratedInterview } from "@/lib/actions/general.action";
 import { useVapiAssistant } from "@/hooks/useVapiAssistant";
 import Magnet from "./Magnet";
+import InterviewSuccessModal from "./interview/InterviewSuccessModal";
 
 enum CallStatus {
   INACTIVE = "INACTIVE",
@@ -45,6 +46,7 @@ const Agent = ({
   const [error, setError] = useState<string | null>(null);
   const [vapiInstance, setVapiInstance] = useState<any>(null);
   const [generatedInterviewId, setGeneratedInterviewId] = useState<string | null>(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   // Initialize Vapi instance - use custom API key if available, otherwise default
   useEffect(() => {
@@ -235,10 +237,24 @@ const Agent = ({
 
     if (callStatus === CallStatus.FINISHED) {
       if (type === "generate") {
+        // If we already have the interviewId from VAPI message, show modal
         if (generatedInterviewId) {
-          router.push(`/interview/${generatedInterviewId}`);
+          setShowSuccessModal(true);
         } else {
-          router.push("/");
+          // Fallback: fetch the most recently created interview for this user
+          const fetchLatestInterview = async () => {
+            console.log("📥 Fetching latest generated interview for user:", userId);
+            const result = await getLatestGeneratedInterview(userId!);
+            if (result.success && result.interviewId) {
+              console.log("✅ Found recent interview:", result.interviewId);
+              setGeneratedInterviewId(result.interviewId);
+              setShowSuccessModal(true);
+            } else {
+              console.log("❌ No recent interview found, redirecting to home");
+              router.push("/");
+            }
+          };
+          fetchLatestInterview();
         }
       } else {
         handleGenerateFeedback(messages);
@@ -446,6 +462,17 @@ const Agent = ({
           </button>
         )}
       </div>
+
+      {/* Success Modal for VAPI-generated interviews */}
+      <InterviewSuccessModal
+        isOpen={showSuccessModal}
+        onClose={() => {
+          setShowSuccessModal(false);
+          if (generatedInterviewId) {
+            router.push(`/interview/${generatedInterviewId}`);
+          }
+        }}
+      />
     </>
   );
 };

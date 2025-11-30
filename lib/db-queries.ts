@@ -379,6 +379,42 @@ export async function getInterviewsByUserId(userId: string): Promise<Interview[]
 }
 
 /**
+ * Get the most recently created interview for a user (within the last N minutes)
+ * Used to fetch interview ID after VAPI call ends
+ */
+export async function getMostRecentInterviewByUserId(
+  userId: string,
+  withinMinutes: number = 1
+): Promise<Interview | null> {
+  const pool = getPool();
+
+  try {
+    const [rows] = await pool.execute<mysql.RowDataPacket[]>(
+      `SELECT * FROM interviews
+       WHERE user_id = ?
+       AND created_at >= DATE_SUB(NOW(), INTERVAL ? MINUTE)
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [userId, withinMinutes]
+    );
+
+    if (rows.length === 0) {
+      return null;
+    }
+
+    const row = rows[0];
+    return {
+      ...row,
+      techstack: safeJsonParse<string[]>(row.techstack),
+      questions: safeJsonParse<string[]>(row.questions),
+    } as Interview;
+  } catch (error: any) {
+    logger.error(`[DB] Error fetching most recent interview:`, error);
+    throw new Error(`Database error: ${error.message}`);
+  }
+}
+
+/**
  * Get latest finalized interviews
  */
 export async function getLatestInterviews(limit: number = 20): Promise<Interview[]> {
