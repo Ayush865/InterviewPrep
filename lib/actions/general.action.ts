@@ -12,6 +12,7 @@ import {
   getLatestInterviewsExcludingUser,
   getInterviewsByUserId as getInterviewsByUserIdFromDB,
   getTotalInterviewCount as getTotalInterviewCountFromDB,
+  getInterviewsWithFeedbackByUserId as getInterviewsWithFeedbackByUserIdFromDB,
 } from "@/lib/db-queries";
 import { logger } from "@/lib/logger";
 
@@ -200,5 +201,38 @@ export async function getTotalInterviewCount(): Promise<number> {
   } catch (error) {
     logger.error("[Interview] Error fetching total interview count:", error);
     return 0;
+  }
+}
+
+/**
+ * Get interviews that a user has taken (has feedback for)
+ * These are interviews created by OTHER users that this user has completed
+ */
+export async function getInterviewsTakenByUser(
+  userId: string
+): Promise<Interview[] | null> {
+  if (!userId) {
+    logger.warn("[Interview] getInterviewsTakenByUser called with undefined or empty userId");
+    return null;
+  }
+
+  try {
+    const interviews = await getInterviewsWithFeedbackByUserIdFromDB(userId);
+
+    return interviews.map((interview) => ({
+      id: interview.id,
+      userId: interview.user_id,
+      role: interview.role,
+      type: interview.type,
+      level: interview.level,
+      techstack: interview.techstack,
+      questions: interview.questions,
+      finalized: interview.finalized,
+      coverImage: interview.cover_image,
+      createdAt: interview.created_at.toISOString(),
+    })) as Interview[];
+  } catch (error) {
+    logger.error("[Interview] Error fetching interviews taken by user:", error);
+    return null;
   }
 }

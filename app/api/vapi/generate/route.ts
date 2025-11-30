@@ -85,7 +85,8 @@ export async function POST(request: Request) {
 
     // Check premium status and interview limit
     const counts = await getUserCounts(userid);
-    const isPremium = user.premium_user === true;
+    // MySQL returns 1/0 for boolean columns, use Boolean() to handle both cases
+    const isPremium = Boolean(user.premium_user);
     const interviewCount = counts.interviewCount;
 
     logger.info(`[User Check] User ${userid}: Premium=${isPremium}, Interviews=${interviewCount}`);

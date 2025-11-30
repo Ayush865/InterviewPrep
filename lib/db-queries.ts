@@ -588,3 +588,30 @@ export async function getFeedbackCountByUser(userId: string): Promise<number> {
     throw new Error(`Database error: ${error.message}`);
   }
 }
+
+/**
+ * Get interviews that a user has taken (has feedback for)
+ * These are interviews created by OTHER users that this user has completed
+ */
+export async function getInterviewsWithFeedbackByUserId(userId: string): Promise<Interview[]> {
+  const pool = getPool();
+
+  try {
+    const [rows] = await pool.execute<mysql.RowDataPacket[]>(
+      `SELECT i.* FROM interviews i
+       INNER JOIN feedbacks f ON i.id = f.interview_id
+       WHERE f.user_id = ? AND i.user_id != ?
+       ORDER BY f.created_at DESC`,
+      [userId, userId]
+    );
+
+    return rows.map((row) => ({
+      ...row,
+      techstack: safeJsonParse<string[]>(row.techstack),
+      questions: safeJsonParse<string[]>(row.questions),
+    })) as Interview[];
+  } catch (error: any) {
+    logger.error(`[DB] Error fetching interviews with feedback by user:`, error);
+    throw new Error(`Database error: ${error.message}`);
+  }
+}

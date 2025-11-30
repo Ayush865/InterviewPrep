@@ -44,6 +44,7 @@ const Agent = ({
   const [lastMessage, setLastMessage] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
   const [vapiInstance, setVapiInstance] = useState<any>(null);
+  const [generatedInterviewId, setGeneratedInterviewId] = useState<string | null>(null);
 
   // Initialize Vapi instance - use custom API key if available, otherwise default
   useEffect(() => {
@@ -110,11 +111,28 @@ const Agent = ({
 
     const onMessage = (message: Message) => {
       console.log("📩 Message received:", message);
-      
+
       if (message.type === "transcript" && message.transcriptType === "final") {
         const newMessage = { role: message.role, content: message.transcript };
         console.log("💬 Final transcript:", newMessage);
         setMessages((prev) => [...prev, newMessage]);
+      }
+
+      // Capture function call result containing interviewId from generate endpoint
+      if (message.type === "function-call-result") {
+        console.log("🔧 Function call result received:", message);
+        try {
+          const result = (message as any).functionCallResult;
+          if (result) {
+            const parsed = typeof result === "string" ? JSON.parse(result) : result;
+            if (parsed.success && parsed.interviewId) {
+              console.log("✅ Interview generated with ID:", parsed.interviewId);
+              setGeneratedInterviewId(parsed.interviewId);
+            }
+          }
+        } catch (e) {
+          console.log("Could not parse function call result:", e);
+        }
       }
     };
 
@@ -217,12 +235,16 @@ const Agent = ({
 
     if (callStatus === CallStatus.FINISHED) {
       if (type === "generate") {
-        router.push("/");
+        if (generatedInterviewId) {
+          router.push(`/interview/${generatedInterviewId}`);
+        } else {
+          router.push("/");
+        }
       } else {
         handleGenerateFeedback(messages);
       }
     }
-  }, [messages, callStatus, feedbackId, interviewId, router, type, userId]);
+  }, [messages, callStatus, feedbackId, interviewId, router, type, userId, generatedInterviewId]);
 
   const handleCall = async () => {
     setCallStatus(CallStatus.CONNECTING);

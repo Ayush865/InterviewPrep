@@ -22,7 +22,8 @@ export async function getUserFeedbackCount(userId: string): Promise<number> {
 export async function getUserPremiumStatus(userId: string): Promise<boolean> {
   try {
     const user = await getUserById(userId);
-    return user?.premium_user === true;
+    // MySQL returns 1/0 for boolean columns, use Boolean() to handle both cases
+    return Boolean(user?.premium_user);
   } catch (error) {
     logger.error("Error fetching user premium status:", error);
     return false;

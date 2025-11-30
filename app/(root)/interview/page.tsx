@@ -1,13 +1,16 @@
 "use client";
 
-import Agent from "@/components/Agent";
 import { useUser } from "@clerk/nextjs";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { getUserPremiumStatus } from "@/lib/actions/premium.action";
 import { getInterviewsByUserId } from "@/lib/actions/general.action";
 import { hasUserVapiCredentials } from "@/lib/actions/vapi.action";
-import LightRays from "@/components/LightRays";
+import Agent from "@/components/Agent";
+import InterviewForm from "@/components/interview/InterviewForm";
+import GenerationMethodModal from "@/components/interview/GenerationMethodModal";
+
+type GenerationMethod = "call" | "form" | null;
 
 const Page = () => {
   const { user: clerkUser, isLoaded } = useUser();
@@ -15,6 +18,7 @@ const Page = () => {
   const [interviewCount, setInterviewCount] = useState(0);
   const [hasVapiCredentials, setHasVapiCredentials] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [selectedMethod, setSelectedMethod] = useState<GenerationMethod>(null);
 
   // Fetch user data on mount
   useEffect(() => {
@@ -128,6 +132,10 @@ const Page = () => {
       );
   }
 
+  const handleMethodSelect = (method: "call" | "form") => {
+    setSelectedMethod(method);
+  };
+
   return (
     <>
       <div className="relative flex flex-col items-center gap-4 mb-4">
@@ -136,12 +144,26 @@ const Page = () => {
         </div>
       </div>
 
-      <Agent
-        userName={clerkUser.firstName || clerkUser.username || "User"}
-        userId={clerkUser.id}
-        userImage={clerkUser.imageUrl}
-        type="generate"
+      {/* Show modal when no method selected */}
+      <GenerationMethodModal
+        isOpen={selectedMethod === null}
+        onSelect={handleMethodSelect}
       />
+
+      {/* Render Agent for call method */}
+      {selectedMethod === "call" && (
+        <Agent
+          userName={clerkUser.firstName || clerkUser.username || "User"}
+          userId={clerkUser.id}
+          userImage={clerkUser.imageUrl}
+          type="generate"
+        />
+      )}
+
+      {/* Render Form for form method */}
+      {selectedMethod === "form" && (
+        <InterviewForm userId={clerkUser.id} />
+      )}
     </>
   );
 };

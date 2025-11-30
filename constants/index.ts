@@ -218,4 +218,40 @@ export const interviewCovers = [
   "/X.svg"
 ];
 
+export const interviewLevels = [
+  { value: "junior", label: "Junior" },
+  { value: "mid", label: "Mid-Level" },
+  { value: "senior", label: "Senior" },
+] as const;
+
+export const interviewTypes = [
+  { value: "Behavioral", label: "Behavioral" },
+  { value: "Technical", label: "Technical" },
+  { value: "System Design", label: "System Design" },
+  { value: "Mixed", label: "Mixed" },
+] as const;
+
+export const interviewRoles = [
+  { value: "Frontend Developer", label: "Frontend Developer" },
+  { value: "Backend Developer", label: "Backend Developer" },
+  { value: "Full Stack Developer", label: "Full Stack Developer" },
+  { value: "DevOps Engineer", label: "DevOps Engineer" },
+  { value: "Data Engineer", label: "Data Engineer" },
+  { value: "Data Scientist", label: "Data Scientist" },
+  { value: "Machine Learning Engineer", label: "Machine Learning Engineer" },
+  { value: "Mobile Developer", label: "Mobile Developer" },
+  { value: "QA Engineer", label: "QA Engineer" },
+  { value: "Solutions Architect", label: "Solutions Architect" },
+  { value: "Product Manager", label: "Product Manager" },
+  { value: "Engineering Manager", label: "Engineering Manager" },
+] as const;
+
+// Deduplicated techstack options derived from mappings
+export const techstackOptions = [
+  ...new Set(Object.values(mappings))
+].map((value) => ({
+  value,
+  label: value.charAt(0).toUpperCase() + value.slice(1),
+}));
+
 

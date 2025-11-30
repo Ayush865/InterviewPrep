@@ -2,6 +2,9 @@ import Link from "next/link";
 import Image from "next/image";
 import { currentUser } from "@clerk/nextjs/server";
 
+// Force dynamic rendering to always fetch fresh data
+export const dynamic = 'force-dynamic';
+
 import { Button } from "@/components/ui/button";
 import InterviewCard from "@/components/InterviewCard";
 import { SparklesCore } from "@/components/ui/sparkles";
@@ -10,6 +13,7 @@ import {
   getInterviewsByUserId,
   getLatestInterviews,
   getTotalInterviewCount,
+  getInterviewsTakenByUser,
 } from "@/lib/actions/general.action";
 import { CometCard } from "@/components/ui/comet-card";
 import { HoverBorderGradient } from "@/components/ui/hover-border-gradient";
@@ -24,17 +28,18 @@ async function Home() {
   const userId = clerkUser?.id;
 
   // Log the userId for debugging
-  // console.log("Dashboard - Logged in user ID:", userId);
-  // console.log("Dashboard - Full Clerk user:", {
-  //   id: clerkUser?.id,
-  //   email: clerkUser?.emailAddresses?.[0]?.emailAddress,
-  //   firstName: clerkUser?.firstName,
-  //   username: clerkUser?.username,
-  // });
+  console.log("Dashboard - Logged in user ID:", userId);
+  console.log("Dashboard - Full Clerk user:", {
+    id: clerkUser?.id,
+    email: clerkUser?.emailAddresses?.[0]?.emailAddress,
+    firstName: clerkUser?.firstName,
+    username: clerkUser?.username,
+  });
 
-  // Fetch user's own interviews and all interviews from other users
-  const [userInterviews, allInterviews, totalInterviewCount, isPremium] = await Promise.all([
+  // Fetch user's own interviews, taken interviews, and all interviews from other users
+  const [userInterviews, takenInterviews, allInterviews, totalInterviewCount, isPremium] = await Promise.all([
     userId ? getInterviewsByUserId(userId) : Promise.resolve(null),
+    userId ? getInterviewsTakenByUser(userId) : Promise.resolve(null),
     userId ? getLatestInterviews({ userId, limit: 10 }) : Promise.resolve(null),
     getTotalInterviewCount(),
     userId ? getUserPremiumStatus(userId) : Promise.resolve(false),
@@ -42,11 +47,30 @@ async function Home() {
 
   const interviewCount = userInterviews?.length || 0;
 
-  // Filter out user's interviews from the "Take Interviews" section
-  const userInterviewIds = new Set(userInterviews?.map(interview => interview.id) || []);
-  const filteredAllInterviews = allInterviews?.filter(interview => !userInterviewIds.has(interview.id)) || null;
+  // Debug logging
+  console.log("Dashboard - User interviews (created):", userInterviews?.length || 0, userInterviews?.map(i => i.id));
+  console.log("Dashboard - Taken interviews:", takenInterviews?.length || 0, takenInterviews?.map(i => i.id));
+  console.log("Dashboard - All interviews:", allInterviews?.length || 0);
 
-  const hasUserInterviews = userInterviews && userInterviews.length > 0;
+  // Create sets for filtering
+  const userInterviewIds = new Set(userInterviews?.map(interview => interview.id) || []);
+  const takenInterviewIds = new Set(takenInterviews?.map(interview => interview.id) || []);
+
+  // "Your Interviews" = created by user + taken by user (with isTaken flag)
+  const yourInterviews = [
+    ...(userInterviews?.map(interview => ({ ...interview, isTaken: false })) || []),
+    ...(takenInterviews?.map(interview => ({ ...interview, isTaken: true })) || []),
+  ];
+
+  // "Take Interviews" = exclude both created and taken interviews
+  const filteredAllInterviews = allInterviews?.filter(
+    interview => !userInterviewIds.has(interview.id) && !takenInterviewIds.has(interview.id)
+  ) || null;
+
+  console.log("Dashboard - Your interviews (combined):", yourInterviews.length, yourInterviews.map(i => ({ id: i.id, isTaken: i.isTaken })));
+  console.log("Dashboard - Filtered all interviews:", filteredAllInterviews?.length || 0);
+
+  const hasYourInterviews = yourInterviews.length > 0;
   const hasAllInterviews = filteredAllInterviews && filteredAllInterviews.length > 0;
 const words = `Master interview performance with AI-driven practice sessions`;
 
@@ -132,16 +156,16 @@ const words = `Master interview performance with AI-driven practice sessions`;
               </p>
             </div>
           </div>
-        </div>
+        </div>. 
       </div> */}
 
       <section className="flex flex-col gap-6 mt-8 relative z-10">
         <h2>Your Interviews</h2>
 
         <div className="interviews-section">
-          
-          {hasUserInterviews ? (
-            userInterviews?.map((interview) => (
+
+          {hasYourInterviews ? (
+            yourInterviews.map((interview) => (
               <CometCard key={interview.id} rotateDepth={5} translateDepth={5} className="interview-card-wrapper w-[360px]" >
               <InterviewCard
                 key={interview.id}
@@ -152,13 +176,14 @@ const words = `Master interview performance with AI-driven practice sessions`;
                 techstack={interview.techstack}
                 createdAt={interview.createdAt}
                 coverImage={interview.coverImage}
+                isTaken={interview.isTaken}
               />
               </CometCard>
             ))
           ) : (
             <p>You haven&apos;t taken any interviews yet</p>
           )}
-          
+
         </div>
       </section>
 

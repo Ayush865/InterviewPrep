@@ -18,6 +18,7 @@ const InterviewCard = async ({
   techstack,
   createdAt,
   coverImage,
+  isTaken = false,
 }: InterviewCardProps) => {
   const feedback =
     userId && interviewId
@@ -61,6 +62,13 @@ const InterviewCard = async ({
           >
             <p className="badge-text text-white">{normalizedType}</p>
           </div>
+
+          {/* Taken Badge */}
+          {isTaken && (
+            <div className="absolute top-0 left-0 w-fit px-3 py-1 rounded-br-lg rounded-tl-lg bg-green-600">
+              <p className="badge-text text-white text-xs">Taken</p>
+            </div>
+          )}
 
           {/* Cover Image */}
           <Image
