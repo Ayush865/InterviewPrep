@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import LimitReachedModal from "./LimitReachedModal";
@@ -8,21 +8,15 @@ import LimitReachedModal from "./LimitReachedModal";
 interface GenerateInterviewButtonProps {
   isPremium: boolean;
   interviewCount: number;
+  hasVapiCredentials: boolean;
 }
 
 const GenerateInterviewButton = ({
   isPremium,
   interviewCount,
+  hasVapiCredentials,
 }: GenerateInterviewButtonProps) => {
   const [showLimitModal, setShowLimitModal] = useState(false);
-  const [hasVapiCredentials, setHasVapiCredentials] = useState(false);
-
-  // Check if user has Vapi credentials in localStorage
-  useEffect(() => {
-    const assistantId = localStorage.getItem('vapi_custom_assistant_id');
-    const webToken = localStorage.getItem('vapi_web_token');
-    setHasVapiCredentials(!!(assistantId && webToken));
-  }, []);
 
   const canGenerateUnlimited = isPremium || hasVapiCredentials;
 
@@ -32,6 +26,8 @@ const GenerateInterviewButton = ({
       setShowLimitModal(true);
     }
   };
+  
+  console.log("GenerateInterviewButton - Props:", { isPremium, interviewCount, hasVapiCredentials, canGenerateUnlimited });
 
   return (
     <>

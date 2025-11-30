@@ -23,6 +23,7 @@ import ShinyText from '@/components/ShinyText';
  import { Carousel, Card } from "@/components/ui/apple-cards-carousel";
  import GenerateInterviewButton from "@/components/GenerateInterviewButton";
  import { getUserPremiumStatus } from "@/lib/actions/premium.action";
+ import { hasUserVapiCredentials } from "@/lib/actions/vapi.action";
 async function Home() {
   const clerkUser = await currentUser();
   const userId = clerkUser?.id;
@@ -37,12 +38,13 @@ async function Home() {
   });
 
   // Fetch user's own interviews, taken interviews, and all interviews from other users
-  const [userInterviews, takenInterviews, allInterviews, totalInterviewCount, isPremium] = await Promise.all([
+  const [userInterviews, takenInterviews, allInterviews, totalInterviewCount, isPremium, hasVapiCredentials] = await Promise.all([
     userId ? getInterviewsByUserId(userId) : Promise.resolve(null),
     userId ? getInterviewsTakenByUser(userId) : Promise.resolve(null),
     userId ? getLatestInterviews({ userId, limit: 10 }) : Promise.resolve(null),
     getTotalInterviewCount(),
     userId ? getUserPremiumStatus(userId) : Promise.resolve(false),
+    userId ? hasUserVapiCredentials(userId) : Promise.resolve(false),
   ]);
 
   const interviewCount = userInterviews?.length || 0;
@@ -105,6 +107,7 @@ const words = `Master interview performance with AI-driven practice sessions`;
           <GenerateInterviewButton
             isPremium={isPremium}
             interviewCount={interviewCount}
+            hasVapiCredentials={hasVapiCredentials}
           />
         </div>
         

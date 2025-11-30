@@ -4,6 +4,7 @@ import { google } from "@ai-sdk/google";
 import { getRandomInterviewCover } from "@/lib/utils";
 import { getUserById, getUserCounts, createInterview, createUser } from "@/lib/db-queries";
 import { logger } from "@/lib/logger";
+import { hasUserVapiCredentials } from "@/lib/actions/vapi.action";
 
 // Add CORS headers for Vapi to access this endpoint
 const corsHeaders = {
@@ -44,17 +45,17 @@ export async function POST(request: Request) {
     logger.info(`type: ${type}, role: ${role}, level: ${level}, techstack: ${techstack}, amount: ${amount}, userid: ${userid}`);
 
     // Validate required fields and check for "NULL" string
-    if (!type || !role || !level || !techstack || !amount || !userid || userid === "NULL" || userid === "null") {
-      logger.error("Validation failed - Missing or invalid fields:", { type, role, level, techstack, amount, userid });
-      return Response.json(
-        {
-          success: false,
-          error: "Missing required fields or userid is NULL",
-          received: { type, role, level, techstack, amount, userid }
-        },
-        { status: 400, headers: corsHeaders }
-      );
-    }
+    // if (!type || !role || !level || !techstack || !amount || !userid || userid === "NULL" || userid === "null") {
+    //   logger.error("Validation failed - Missing or invalid fields:", { type, role, level, techstack, amount, userid });
+    //   return Response.json(
+    //     {
+    //       success: false,
+    //       error: "Missing required fields or userid is NULL",
+    //       received: { type, role, level, techstack, amount, userid }
+    //     },
+    //     { status: 400, headers: corsHeaders }
+    //   );
+    // }
 
     logger.info("Generating questions for user:", userid);
 
@@ -89,10 +90,13 @@ export async function POST(request: Request) {
     const isPremium = Boolean(user.premium_user);
     const interviewCount = counts.interviewCount;
 
-    logger.info(`[User Check] User ${userid}: Premium=${isPremium}, Interviews=${interviewCount}`);
+    // Check if user has their own VAPI credentials
+    const hasVapiCredentials = await hasUserVapiCredentials(userid);
 
-    if (!isPremium && interviewCount >= 1) {
-      logger.warn(`[Limit] User ${userid} reached interview generation limit (Non-Premium)`);
+    logger.info(`[User Check] User ${userid}: Premium=${isPremium}, Interviews=${interviewCount}, HasVapiCredentials=${hasVapiCredentials}`);
+
+    if (!isPremium && !hasVapiCredentials && interviewCount >= 1) {
+      logger.warn(`[Limit] User ${userid} reached interview generation limit (Non-Premium, No VAPI credentials)`);
       return Response.json(
         {
           success: false,
