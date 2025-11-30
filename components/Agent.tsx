@@ -359,25 +359,21 @@ const Agent = ({
     <>
       <div className="call-view">
         {/* AI Interviewer Card */}
-
-          <div className="card-interviewer">
-            <div className="avatar">
-              <Image
-                src={
-                  type === "generate"
-                    ? "/ai-avatar.png"
-                    : "/interviewer-avatar-female.png"
-                }
+        <div className="card-interviewer">
+          <div className="avatar">
+            <Image
+              src={
+                type === "generate"
+                  ? "/ai-avatar.png"
+                  : "/interviewer-avatar-female.png"
+              }
               alt="profile-image"
               fill
               className="object-cover"
             />
-
             {isSpeaking && <span className="animate-speak" />}
           </div>
-        
           <h3>{type === "generate" ? "Hiring Manager" : "AI Interviewer"}</h3>
-
         </div>
 
         {/* User Profile Card */}

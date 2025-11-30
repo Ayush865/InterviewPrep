@@ -29,6 +29,8 @@
     "@react-three/fiber": "^9.4.0",
     "@react-three/rapier": "^2.2.0",
     "@tabler/icons-react": "^3.35.0",
+    "@tensorflow-models/face-landmarks-detection": "^1.0.6",
+    "@tensorflow/tfjs": "^4.22.0",
     "@tsparticles/engine": "^3.9.1",
     "@tsparticles/react": "^3.0.0",
     "@tsparticles/slim": "^3.9.1",

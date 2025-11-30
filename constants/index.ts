@@ -24,6 +24,11 @@ export const mappings = {
   postgresql: "postgresql",
   sqlite: "sqlite",
   firebase: "firebase",
+  springboot: "springboot",
+  "spring boot": "springboot",
+  spring: "springboot",
+  spark: "spark",
+  "apache spark": "spark",
   docker: "docker",
   kubernetes: "kubernetes",
   aws: "aws",
@@ -102,6 +107,10 @@ export const mappings = {
   golang: "go",
   java: "java",
   python: "python",
+  fastapi: "fastapi",
+  "fast api": "fastapi",
+  django: "django",
+  linux: "linux",
 };
 
 export const interviewer: CreateAssistantDTO = {
