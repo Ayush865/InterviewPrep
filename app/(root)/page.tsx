@@ -78,24 +78,14 @@ const words = `Master interview performance with AI-driven practice sessions`;
 
   return (
     <>
-    <WavyBackground 
-      className="mx-auto my-auto"
-      containerClassName="h-auto"
-      speed="slow"
-      waveWidth={50}
+      <WavyBackground
+        className="mx-auto my-auto"
+        containerClassName="h-auto"
+        speed="fast"
+        waveWidth={100}
        colors={["#E9E3DF", "#ed5b23","#434bb6","#E43636","#739EC9"]}
-       blur={10}
+       blur={6}
     >
-      {/* <WavyBackground 
-      className="mx-auto my-auto"
-      containerClassName="h-full"
-      // colors={["#dddfff", "#6156d3ff", "#189d9bff", "#26b46bff", "#15192fff"]}
-      waveWidth={1}
-      backgroundFill="transparent"
-      blur={10}
-      speed="slow"
-      waveOpacity={0.3}
-    > */}
       <section className="card-cta relative z-10 text-white py-4">
 
         <div className="flex flex-col gap-6 max-w-lg ">    
@@ -121,7 +111,7 @@ const words = `Master interview performance with AI-driven practice sessions`;
         
       </section>
       
-      <div className="w-full absolute inset-0 h-screen z-0">
+      <div className="w-full absolute inset-0 h-full z-0">
         <SparklesCore
           id="tsparticlesfullpage"
           background="transparent"
@@ -162,70 +152,85 @@ const words = `Master interview performance with AI-driven practice sessions`;
         </div>. 
       </div> */}
 
-      <section className="flex flex-col gap-6 mt-8 relative z-10">
-        <h2>Your Interviews</h2>
+      {userId && (
+        <>
+          <section className="flex flex-col gap-6 mt-8 relative z-10">
+            <h2>Your Interviews</h2>
 
-        <div className="interviews-section">
+            <div className="interviews-section">
 
-          {hasYourInterviews ? (
-            yourInterviews.map((interview) => (
-              <CometCard key={interview.id} rotateDepth={5} translateDepth={5} className="interview-card-wrapper w-[360px]" >
-              <InterviewCard
-                key={interview.id}
-                userId={userId}
-                interviewId={interview.id}
-                role={interview.role}
-                type={interview.type}
-                techstack={interview.techstack}
-                createdAt={interview.createdAt}
-                coverImage={interview.coverImage}
-                isTaken={interview.isTaken}
-              />
-              </CometCard>
-            ))
-          ) : (
-            <p>You haven&apos;t taken any interviews yet</p>
-          )}
+              {hasYourInterviews ? (
+                yourInterviews.map((interview) => (
+                  <CometCard key={interview.id} rotateDepth={5} translateDepth={5} className="interview-card-wrapper w-[360px]" >
+                  <InterviewCard
+                    key={interview.id}
+                    userId={userId}
+                    interviewId={interview.id}
+                    role={interview.role}
+                    type={interview.type}
+                    techstack={interview.techstack}
+                    createdAt={interview.createdAt}
+                    coverImage={interview.coverImage}
+                    isTaken={interview.isTaken}
+                  />
+                  </CometCard>
+                ))
+              ) : (
+                <p>You haven&apos;t taken any interviews yet</p>
+              )}
 
-        </div>
-      </section>
+            </div>
+          </section>
 
-      <section className="flex flex-col gap-6 mt-8 relative z-10">
-        <h2>Take Interviews</h2>
+          <section className="flex flex-col gap-6 mt-8 relative z-10">
+            <h2>Take Interviews</h2>
 
-        <div className="interviews-section">
-          {hasAllInterviews ? (
-            filteredAllInterviews?.map((interview) => (
-              <CometCard key={interview.id} rotateDepth={5} translateDepth={5} className="w-[360px] interview-card-wrapper ">
-              <InterviewCard
-                key={interview.id}
-                userId={userId}
-                interviewId={interview.id}
-                role={interview.role}
-                type={interview.type}
-                techstack={interview.techstack}
-                createdAt={interview.createdAt}
-                coverImage={interview.coverImage}
-              />
-              </CometCard>
-            ))
-          ) : (
-            <p>There are no interviews available</p>
-          )}
-        </div>
-      </section>
+            <div className="interviews-section">
+              {hasAllInterviews ? (
+                filteredAllInterviews?.map((interview) => (
+                  <CometCard key={interview.id} rotateDepth={5} translateDepth={5} className="w-[360px] interview-card-wrapper ">
+                  <InterviewCard
+                    key={interview.id}
+                    userId={userId}
+                    interviewId={interview.id}
+                    role={interview.role}
+                    type={interview.type}
+                    techstack={interview.techstack}
+                    createdAt={interview.createdAt}
+                    coverImage={interview.coverImage}
+                  />
+                  </CometCard>
+                ))
+              ) : (
+                <p>There are no interviews available</p>
+              )}
+            </div>
+          </section>
+        </>
+      )}
 
       {/* Footer */}
-      <footer className="absolute z-10 mt-16 py-6 border-t border-white/10 w-full">
-        <div className="flex items-center justify-center">
-          <p className="text-light-100 text-base">
-            Made with <span className="text-red-500 animate-pulse">❤️</span> by{" "}
-            <span className="font-semibold text-orange">Ayush Prakash</span>
-          </p>
-        </div>
-      </footer>
-      </WavyBackground>
-    </>
+      {/* {userId && (
+        <footer className="absolute z-10 mt-16 py-5 border-t border-white/10 w-full">
+          <div className="flex items-center justify-center">
+            <p className="text-light-100 text-base">
+              Made with <span className="text-red-500 animate-pulse">❤️</span> by{" "}
+              <span className="font-semibold text-orange">Ayush Prakash</span>
+            </p>
+          </div>
+        </footer>
+      )} */}
+
+        <footer className="relative z-10 mt-16 py-5 border-t border-white/10 w-full">
+          <div className="flex items-center justify-center">
+            <p className="text-light-100 text-base">
+              Made with <span className="text-red-500 animate-pulse">❤️</span> by{" "}
+              <Link href="https://www.linkedin.com/in/ayush-prakash-2bb65122b/" ><span className="font-semibold text-orange">Ayush Prakash</span></Link>
+            </p>
+          </div>
+        </footer>
+</WavyBackground >
+      </>
   );
 }
 
