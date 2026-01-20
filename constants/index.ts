@@ -24,6 +24,11 @@ export const mappings = {
   postgresql: "postgresql",
   sqlite: "sqlite",
   firebase: "firebase",
+  springboot: "springboot",
+  "spring boot": "springboot",
+  spring: "springboot",
+  spark: "spark",
+  "apache spark": "spark",
   docker: "docker",
   kubernetes: "kubernetes",
   aws: "aws",
@@ -95,6 +100,17 @@ export const mappings = {
   netlify: "netlify",
   vercel: "vercel",
   "aws amplify": "amplify",
+  "c++": "cplusplus",
+  cpp: "cplusplus",
+  cplusplus: "cplusplus",
+  go: "go",
+  golang: "go",
+  java: "java",
+  python: "python",
+  fastapi: "fastapi",
+  "fast api": "fastapi",
+  django: "django",
+  linux: "linux",
 };
 
 export const interviewer: CreateAssistantDTO = {
@@ -190,41 +206,61 @@ export const feedbackSchema = z.object({
 });
 
 export const interviewCovers = [
-  "/adobe.png",
-  "/amazon.png",
-  "/facebook.png",
-  "/hostinger.png",
-  "/pinterest.png",
-  "/quora.png",
-  "/reddit.png",
-  "/skype.png",
-  "/spotify.png",
-  "/telegram.png",
-  "/tiktok.png",
-  "/yahoo.png",
+  "/Adobe.svg",
+  "/Amazon.svg",
+  "/Apple.svg",
+  "/Dell.svg",
+  "/Google.svg",
+  "/Meta.svg",
+  "/Microsoft.svg",
+  "/Netflix.png",
+  "/Nvidia.svg",
+  "/Tesla.svg",
+  "/Salesforce.svg",
+  "/Spotify.svg",
+  "/Twitter.svg",
+  "/Uber.svg",
+  "/Atlassian.svg",
+  "/LinkedIn.svg",
+  "/Stripe.svg",
+  "/PayPal.svg",
+  "/X.svg"
 ];
 
-export const dummyInterviews: Interview[] = [
-  {
-    id: "1",
-    userId: "user1",
-    role: "Frontend Developer",
-    type: "Technical",
-    techstack: ["React", "TypeScript", "Next.js", "Tailwind CSS"],
-    level: "Junior",
-    questions: ["What is React?"],
-    finalized: false,
-    createdAt: "2024-03-15T10:00:00Z",
-  },
-  {
-    id: "2",
-    userId: "user1",
-    role: "Full Stack Developer",
-    type: "Mixed",
-    techstack: ["Node.js", "Express", "MongoDB", "React"],
-    level: "Senior",
-    questions: ["What is Node.js?"],
-    finalized: false,
-    createdAt: "2024-03-14T15:30:00Z",
-  },
-];
+export const interviewLevels = [
+  { value: "junior", label: "Junior" },
+  { value: "mid", label: "Mid-Level" },
+  { value: "senior", label: "Senior" },
+] as const;
+
+export const interviewTypes = [
+  { value: "Behavioral", label: "Behavioral" },
+  { value: "Technical", label: "Technical" },
+  { value: "System Design", label: "System Design" },
+  { value: "Mixed", label: "Mixed" },
+] as const;
+
+export const interviewRoles = [
+  { value: "Frontend Developer", label: "Frontend Developer" },
+  { value: "Backend Developer", label: "Backend Developer" },
+  { value: "Full Stack Developer", label: "Full Stack Developer" },
+  { value: "DevOps Engineer", label: "DevOps Engineer" },
+  { value: "Data Engineer", label: "Data Engineer" },
+  { value: "Data Scientist", label: "Data Scientist" },
+  { value: "Machine Learning Engineer", label: "Machine Learning Engineer" },
+  { value: "Mobile Developer", label: "Mobile Developer" },
+  { value: "QA Engineer", label: "QA Engineer" },
+  { value: "Solutions Architect", label: "Solutions Architect" },
+  { value: "Product Manager", label: "Product Manager" },
+  { value: "Engineering Manager", label: "Engineering Manager" },
+] as const;
+
+// Deduplicated techstack options derived from mappings
+export const techstackOptions = [
+  ...new Set(Object.values(mappings))
+].map((value) => ({
+  value,
+  label: value.charAt(0).toUpperCase() + value.slice(1),
+}));
+
+

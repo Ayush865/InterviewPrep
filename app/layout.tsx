@@ -1,16 +1,18 @@
 import { Toaster } from "sonner";
 import type { Metadata } from "next";
-import { Mona_Sans } from "next/font/google";
+import { Poppins } from "next/font/google";
+import { ClerkProvider } from "@clerk/nextjs";
 
 import "./globals.css";
 
-const monaSans = Mona_Sans({
-  variable: "--font-mona-sans",
+const poppins = Poppins({
+  variable: "--font-poppins",
   subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700", "800"],
 });
 
 export const metadata: Metadata = {
-  title: "PrepWise",
+  title: "Hired Fox",
   description: "An AI-powered platform for preparing for mock interviews",
 };
 
@@ -20,12 +22,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
-      <body className={`${monaSans.className} antialiased pattern`}>
-        {children}
+    <ClerkProvider>
+      <html lang="en" className="dark">
+        <body className={`${poppins.className}`}>
+          {children}
 
-        <Toaster />
-      </body>
-    </html>
+          <Toaster />
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }

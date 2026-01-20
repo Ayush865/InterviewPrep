@@ -1,0 +1,50 @@
+{
+  "name": "Hired_fox_assist_v4",
+  "voice": {
+    "voiceId": "Elliot",
+    "provider": "vapi"
+  },
+  "model": {
+    "model": "grok-4-fast-non-reasoning",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You are a voice assistant that will build a perfect interview pkg for the caller.\nGreet the user\nTell them you will gather a few details to generate the interview.\nThen ask each question one-by-one and wait for the user to answer. Do NOT ask multiple questions at once.\nThe questions to ask (in order):\n1) What is the job experience level? (example: Junior, Mid, Senior)\n2) How many questions should I generate?\n3) What tech stack should I cover? (e.g., React, Node)\n4) What role should I prepare for? (e.g., Frontend, Backend)\n5) What type of the interview should it be? (e.g. Technical, Behavoural or Mix of both)\n\nIMPORTANT: The user's ID is {{userid}}. When you call the 'SendDataToGemini' tool, you MUST include this exact userid value.\n\nWhen all answers are collected and validated, call the tool 'SendDataToGemini' with:\n- userid: {{userid}} (REQUIRED - use this exact value)\n- level: (the job experience level from question 1)\n- amount: (the number of questions from question 2)\n- techstack: (the tech stack from question 3)\n- role: (the role from question 4)\n- type: (the interview type from question 5)\n\nThen speak the requestComplete message and end the call.\nThis is a voice conversation — keep answers short and do not use special characters.\nSpeak more like a human with punctuations and pauses. But keep the conversation concise and quick."
+      }
+    ],
+    "provider": "xai"
+  },
+  "firstMessage": "Hello.",
+  "voicemailMessage": "Please call back when you're available.",
+  "endCallMessage": "Goodbye.",
+  "transcriber": {
+    "model": "nova-2",
+    "language": "en",
+    "provider": "deepgram"
+  },
+  "analysisPlan": {
+    "minMessagesThreshold": 2,
+    "structuredDataPlan": {
+      "enabled": true,
+      "messages": [
+        {
+          "content": "Create a structured output resource in Vapi that matches your variableExtractionPlan. Example JSON schema \n{\n  \"name\": \"interview_prep_input\",\n  \"description\": \"Collect interview parameters from the caller\",\n  \"schema\": {\n    \"type\": \"object\",\n    \"properties\": {\n      \"level\": { \"type\": \"string\", \"description\": \"job experience level\" },\n      \"amount\": { \"type\": \"number\", \"description\": \"how many questions to generate\" },\n      \"techstack\": { \"type\": \"string\", \"description\": \"technologies to cover\" },\n      \"role\": { \"type\": \"string\", \"description\": \"role, e.g. Frontend/Backend\" },\n      \"type\": { \"type\": \"string\", \"description\": \"interview type\" },\n      \"userId\": { \"type\": \"string\", \"enum\": [\"test1\", \"test2\"], \"description\": \"user id\" }\n    },\n    \"required\": [\"level\",\"amount\",\"techstack\",\"role\",\"type\",\"userId\"]\n  }\n}\n\nJson Schema:\n{{schema}}\n\nOnly respond with the JSON.",
+          "role": "system"
+        },
+        {
+          "content": "Here is the transcript:\n\n{{transcript}}\n\n. Here is the ended reason of the call:\n\n{{endedReason}}\n\n",
+          "role": "user"
+        }
+      ]
+    }
+  },
+  "startSpeakingPlan": {
+    "smartEndpointingPlan": {
+      "provider": "vapi"
+    }
+  },
+  "compliancePlan": {
+    "hipaaEnabled": false,
+    "pciEnabled": false
+  }
+}

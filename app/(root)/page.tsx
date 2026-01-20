@@ -1,94 +1,238 @@
 import Link from "next/link";
 import Image from "next/image";
+import { currentUser } from "@clerk/nextjs/server";
+
+// Force dynamic rendering to always fetch fresh data
+export const dynamic = 'force-dynamic';
 
 import { Button } from "@/components/ui/button";
 import InterviewCard from "@/components/InterviewCard";
-
-import { getCurrentUser } from "@/lib/actions/auth.action";
+import { SparklesCore } from "@/components/ui/sparkles";
+import {WavyBackground} from "@/components/ui/wavy-background";
 import {
   getInterviewsByUserId,
   getLatestInterviews,
+  getTotalInterviewCount,
+  getInterviewsTakenByUser,
 } from "@/lib/actions/general.action";
-
+import { CometCard } from "@/components/ui/comet-card";
+import { HoverBorderGradient } from "@/components/ui/hover-border-gradient";
+import { TextGenerateEffect } from "@/components/ui/text-generate-effect";
+import ShinyText from '@/components/ShinyText';
+ import CountUp from '@/components/CountUp'
+ import { Carousel, Card } from "@/components/ui/apple-cards-carousel";
+ import GenerateInterviewButton from "@/components/GenerateInterviewButton";
+ import { getUserPremiumStatus } from "@/lib/actions/premium.action";
+ import { hasUserVapiCredentials } from "@/lib/actions/vapi.action";
 async function Home() {
-  const user = await getCurrentUser();
+  const clerkUser = await currentUser();
+  const userId = clerkUser?.id;
 
-  // Only fetch interviews if user is authenticated
-  const [userInterviews, allInterview] = await Promise.all([
-    user?.id ? getInterviewsByUserId(user.id) : Promise.resolve(null),
-    user?.id ? getLatestInterviews({ userId: user.id }) : Promise.resolve(null),
+  // Log the userId for debugging
+  console.log("Dashboard - Logged in user ID:", userId);
+  console.log("Dashboard - Full Clerk user:", {
+    id: clerkUser?.id,
+    email: clerkUser?.emailAddresses?.[0]?.emailAddress,
+    firstName: clerkUser?.firstName,
+    username: clerkUser?.username,
+  });
+
+  // Fetch user's own interviews, taken interviews, and all interviews from other users
+  const [userInterviews, takenInterviews, allInterviews, totalInterviewCount, isPremium, hasVapiCredentials] = await Promise.all([
+    userId ? getInterviewsByUserId(userId) : Promise.resolve(null),
+    userId ? getInterviewsTakenByUser(userId) : Promise.resolve(null),
+    userId ? getLatestInterviews({ userId, limit: 10 }) : Promise.resolve(null),
+    getTotalInterviewCount(),
+    userId ? getUserPremiumStatus(userId) : Promise.resolve(false),
+    userId ? hasUserVapiCredentials(userId) : Promise.resolve(false),
   ]);
 
-  const hasPastInterviews = userInterviews?.length! > 0;
-  const hasUpcomingInterviews = allInterview?.length! > 0;
+  const interviewCount = userInterviews?.length || 0;
+
+  // Debug logging
+  console.log("Dashboard - User interviews (created):", userInterviews?.length || 0, userInterviews?.map(i => i.id));
+  console.log("Dashboard - Taken interviews:", takenInterviews?.length || 0, takenInterviews?.map(i => i.id));
+  console.log("Dashboard - All interviews:", allInterviews?.length || 0);
+
+  // Create sets for filtering
+  const userInterviewIds = new Set(userInterviews?.map(interview => interview.id) || []);
+  const takenInterviewIds = new Set(takenInterviews?.map(interview => interview.id) || []);
+
+  // "Your Interviews" = created by user + taken by user (with isTaken flag)
+  const yourInterviews = [
+    ...(userInterviews?.map(interview => ({ ...interview, isTaken: false })) || []),
+    ...(takenInterviews?.map(interview => ({ ...interview, isTaken: true })) || []),
+  ];
+
+  // "Take Interviews" = exclude both created and taken interviews
+  const filteredAllInterviews = allInterviews?.filter(
+    interview => !userInterviewIds.has(interview.id) && !takenInterviewIds.has(interview.id)
+  ) || null;
+
+  console.log("Dashboard - Your interviews (combined):", yourInterviews.length, yourInterviews.map(i => ({ id: i.id, isTaken: i.isTaken })));
+  console.log("Dashboard - Filtered all interviews:", filteredAllInterviews?.length || 0);
+
+  const hasYourInterviews = yourInterviews.length > 0;
+  const hasAllInterviews = filteredAllInterviews && filteredAllInterviews.length > 0;
+const words = `Master interview performance with AI-driven practice sessions`;
 
   return (
     <>
-      <section className="card-cta">
-        <div className="flex flex-col gap-6 max-w-lg">
-          <h2>Get Interview-Ready with AI-Powered Practice & Feedback</h2>
-          <p className="text-lg">
-            Practice real interview questions & get instant feedback
+      <WavyBackground
+        className="mx-auto flex flex-col justify-between w-full max-w-7xl h-full flex-1"
+        containerClassName="h-auto flex-1"
+        speed="fast"
+        waveWidth={100}
+       colors={["#E9E3DF", "#ed5b23","#434bb6","#E43636","#739EC9"]}
+       blur={6}
+    >
+      <div className={`flex-1 flex flex-col w-full relative ${!userId ? "justify-center" : ""}`}>
+      <section className="card-cta relative z-10 text-white py-4">
+
+        <div className="flex flex-col gap-6 max-w-lg ">    
+          <TextGenerateEffect words={words} duration={1}/>
+          <p className="text-lg text-white ">
+            Simulate real interview questions, receive immediate data-backed feedback, and improve reliably
           </p>
 
-          <Button asChild className="btn-primary max-sm:w-full">
-            <Link href="/interview">Start an Interview</Link>
-          </Button>
+          <GenerateInterviewButton
+            isPremium={isPremium}
+            interviewCount={interviewCount}
+            hasVapiCredentials={hasVapiCredentials}
+          />
         </div>
-
+        
         <Image
-          src="/robot.png"
+          src="/fox_on_computer.png"
           alt="robo-dude"
-          width={400}
-          height={400}
+          width={350}
+          height={300}
           className="max-sm:hidden"
         />
+        
       </section>
+      
+      <div className="w-full absolute inset-0 h-full z-0">
+        <SparklesCore
+          id="tsparticlesfullpage"
+          background="transparent"
+          minSize={0.6}
+          maxSize={1.4}
+          particleDensity={10}
+          className="w-full h-full"
+          particleColor="#FFFFFF"
+          speed={5}
+        />
+      </div>
+     
+      {/* Stats Section */}
+      {/* <div className="flex items-center justify-center mt-4 relative z-10">
+        <div className="card-cta backdrop-blur-sm border border-orange/30 px-4 py-3 rounded-2xl">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center justify-center w-16 h-16 rounded-full">
+              <span className="text-4xl">🎯</span>
+            </div>
+            <div>
+              <p className="text-4xl font-bold text-orange">
+               
+                <CountUp
+                  from={0}
+                  to={totalInterviewCount}
+                  separator=","
+                  direction="up"
+                  duration={1}
+                  className="count-up-text"
+                />
+                
+              </p>
+              <p className="text-light-100 text-sm">
+                interviews created by our community so far
+              </p>
+            </div>
+          </div>
+        </div>. 
+      </div> */}
 
-      <section className="flex flex-col gap-6 mt-8">
-        <h2>Your Interviews</h2>
+      {userId && (
+        <>
+          <section className="flex flex-col gap-6 mt-8 relative z-10">
+            <h2>Your Interviews</h2>
 
-        <div className="interviews-section">
-          {hasPastInterviews ? (
-            userInterviews?.map((interview) => (
-              <InterviewCard
-                key={interview.id}
-                userId={user?.id}
-                interviewId={interview.id}
-                role={interview.role}
-                type={interview.type}
-                techstack={interview.techstack}
-                createdAt={interview.createdAt}
-              />
-            ))
-          ) : (
-            <p>You haven&apos;t taken any interviews yet</p>
-          )}
-        </div>
-      </section>
+            <div className="interviews-section">
 
-      <section className="flex flex-col gap-6 mt-8">
-        <h2>Take Interviews</h2>
+              {hasYourInterviews ? (
+                yourInterviews.map((interview) => (
+                  <CometCard key={interview.id} rotateDepth={5} translateDepth={5} className="interview-card-wrapper w-[360px]" >
+                  <InterviewCard
+                    key={interview.id}
+                    userId={userId}
+                    interviewId={interview.id}
+                    role={interview.role}
+                    type={interview.type}
+                    techstack={interview.techstack}
+                    createdAt={interview.createdAt}
+                    coverImage={interview.coverImage}
+                    isTaken={interview.isTaken}
+                  />
+                  </CometCard>
+                ))
+              ) : (
+                <p>You haven&apos;t taken any interviews yet</p>
+              )}
 
-        <div className="interviews-section">
-          {hasUpcomingInterviews ? (
-            allInterview?.map((interview) => (
-              <InterviewCard
-                key={interview.id}
-                userId={user?.id}
-                interviewId={interview.id}
-                role={interview.role}
-                type={interview.type}
-                techstack={interview.techstack}
-                createdAt={interview.createdAt}
-              />
-            ))
-          ) : (
-            <p>There are no interviews available</p>
-          )}
-        </div>
-      </section>
-    </>
+            </div>
+          </section>
+
+          <section className="flex flex-col gap-6 mt-8 relative z-10">
+            <h2>Take Interviews</h2>
+
+            <div className="interviews-section">
+              {hasAllInterviews ? (
+                filteredAllInterviews?.map((interview) => (
+                  <CometCard key={interview.id} rotateDepth={5} translateDepth={5} className="w-[360px] interview-card-wrapper ">
+                  <InterviewCard
+                    key={interview.id}
+                    userId={userId}
+                    interviewId={interview.id}
+                    role={interview.role}
+                    type={interview.type}
+                    techstack={interview.techstack}
+                    createdAt={interview.createdAt}
+                    coverImage={interview.coverImage}
+                  />
+                  </CometCard>
+                ))
+              ) : (
+                <p>There are no interviews available</p>
+              )}
+            </div>
+          </section>
+        </>
+      )}
+      </div>
+
+      {/* Footer */}
+      {/* {userId && (
+        <footer className="absolute z-10 mt-16 py-5 border-t border-white/10 w-full">
+          <div className="flex items-center justify-center">
+            <p className="text-light-100 text-base">
+              Made with <span className="text-red-500 animate-pulse">❤️</span> by{" "}
+              <span className="font-semibold text-orange">Ayush Prakash</span>
+            </p>
+          </div>
+        </footer>
+      )} */}
+
+        <footer className="relative z-10 mt-16 py-5 border-t border-white/10 w-full">
+          <div className="flex items-center justify-center">
+            <p className="text-light-100 text-base">
+              Made with <span className="text-red-500 animate-pulse">❤️</span> by{" "}
+              <Link href="https://www.linkedin.com/in/ayush-prakash-2bb65122b/" ><span className="font-semibold text-orange">Ayush Prakash</span></Link>
+            </p>
+          </div>
+        </footer>
+</WavyBackground >
+      </>
   );
 }
 

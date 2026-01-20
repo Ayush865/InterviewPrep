@@ -39,3 +39,13 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+vapi-create-tool-assistant.sh
+vapi_workflow.json
+
+# Vapi clone system logs
+/logs/*.log
+/docs/*VAPI_CLONE_IMPLEMENTATION.md
+VAPI_CLONE_QUICKSTART.md
+
+# clerk configuration (can include secrets)
+/.clerk/

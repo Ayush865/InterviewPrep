@@ -23,6 +23,7 @@ interface Interview {
   userId: string;
   type: string;
   finalized: boolean;
+  coverImage?: string;
 }
 
 interface CreateFeedbackParams {
@@ -45,11 +46,14 @@ interface InterviewCardProps {
   type: string;
   techstack: string[];
   createdAt?: string;
+  coverImage?: string;
+  isTaken?: boolean;
 }
 
 interface AgentProps {
   userName: string;
   userId?: string;
+  userImage?: string;
   interviewId?: string;
   feedbackId?: string;
   type: "generate" | "interview";
