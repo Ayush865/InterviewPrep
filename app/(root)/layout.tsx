@@ -9,7 +9,7 @@ const Layout = async ({ children }: { children: ReactNode }) => {
   const user = await currentUser();
 
   return (
-    <div className="root-layout">
+    <div className="root-layout flex flex-col min-h-screen">
       {user && <LogoutHandler />}
       <nav className="flex items-center justify-between relative z-50">
         <Link href="/" className="flex items-center justify-center gap-2">

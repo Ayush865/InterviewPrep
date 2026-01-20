@@ -79,13 +79,14 @@ const words = `Master interview performance with AI-driven practice sessions`;
   return (
     <>
       <WavyBackground
-        className="mx-auto my-auto"
-        containerClassName="h-auto"
+        className="mx-auto flex flex-col justify-between w-full max-w-7xl h-full flex-1"
+        containerClassName="h-auto flex-1"
         speed="fast"
         waveWidth={100}
        colors={["#E9E3DF", "#ed5b23","#434bb6","#E43636","#739EC9"]}
        blur={6}
     >
+      <div className={`flex-1 flex flex-col w-full relative ${!userId ? "justify-center" : ""}`}>
       <section className="card-cta relative z-10 text-white py-4">
 
         <div className="flex flex-col gap-6 max-w-lg ">    
@@ -208,6 +209,7 @@ const words = `Master interview performance with AI-driven practice sessions`;
           </section>
         </>
       )}
+      </div>
 
       {/* Footer */}
       {/* {userId && (

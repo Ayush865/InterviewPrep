@@ -46,3 +46,6 @@ vapi_workflow.json
 /logs/*.log
 /docs/*VAPI_CLONE_IMPLEMENTATION.md
 VAPI_CLONE_QUICKSTART.md
+
+# clerk configuration (can include secrets)
+/.clerk/
