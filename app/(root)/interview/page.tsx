@@ -98,11 +98,11 @@ const Page = () => {
           <p className="text-gray-300 text-sm text-center max-w-md">
             Choose one of the options below to continue:
           </p>
-          <div className="flex gap-4">
-            <Link href="/" className="px-4 py-2 bg-dark-300 rounded-lg text-white hover:bg-dark-400 transition-colors">
+          <div className="flex flex-col sm:flex-row gap-4 w-full max-w-2xl">
+            <Link href="/" className="px-4 py-2 bg-dark-300 rounded-lg text-white hover:bg-dark-400 transition-colors w-full sm:w-auto text-center">
               Go Home
             </Link>
-            <Link href="/settings/vapi" className="px-4 py-2 bg-blue-600 rounded-lg text-white hover:bg-blue-700 transition-colors flex items-center gap-2">
+            <Link href="/settings/vapi" className="px-4 py-2 bg-blue-600 rounded-lg text-white hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 w-full sm:w-auto">
               <svg
                 className="w-4 h-4"
                 fill="none"
@@ -124,7 +124,7 @@ const Page = () => {
               </svg>
               Use My Vapi Key
             </Link>
-            <button className="px-4 py-2 bg-slate-purple rounded-lg text-white hover:bg-cream hover:text-black transition-colors">
+            <button className="px-4 py-2 bg-slate-purple rounded-lg text-white hover:bg-cream hover:text-black transition-colors w-full sm:w-auto text-center">
               Upgrade to Premium
             </button>
           </div>

@@ -14,7 +14,7 @@ const Layout = async ({ children }: { children: ReactNode }) => {
       <nav className="flex items-center justify-between relative z-50">
         <Link href="/" className="flex items-center justify-center gap-2">
           <Image src="/logo.png" alt="MockMate Logo" width={70} height={70} />
-          <div className="pt-4">
+          <div className="pt-4 max-sm:hidden">
             <h2 className="text-primary-10">Hired <span className="text-orange">Fox</span></h2>
           </div>
         </Link>
@@ -24,10 +24,11 @@ const Layout = async ({ children }: { children: ReactNode }) => {
             <>
               <Link
                 href="/settings/vapi"
-                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 transition-all duration-200"
+                className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 transition-all duration-200"
+                aria-label="Vapi Settings"
               >
                 <svg
-                  className="w-5 h-5 text-white"
+                  className="w-5 h-5 text-white flex-shrink-0"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -45,7 +46,7 @@ const Layout = async ({ children }: { children: ReactNode }) => {
                     d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
                   />
                 </svg>
-                <span className="text-white text-sm font-medium">Vapi Settings</span>
+                <span className="hidden sm:inline text-white text-sm font-medium">Vapi Settings</span>
               </Link>
 
               <UserButton
