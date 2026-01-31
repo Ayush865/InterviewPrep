@@ -318,16 +318,25 @@
     @apply flex flex-wrap gap-4 max-lg:flex-col w-full items-stretch;
   }
 
-  /* Hover blur effect for interview cards */
-  .interviews-section:has(.interview-card-wrapper:hover) .interview-card-wrapper:not(:hover) {
-    filter: blur(1px);
-    opacity: 0.6;
-    transform: scale(0.95);
-    transition: filter 0.3s ease, opacity 0.3s ease, transform 0.3s ease;
+  /* Hover blur effect for interview cards - Only on devices with hover capability */
+  @media (hover: hover) and (pointer: fine) {
+    .interviews-section:has(.interview-card-wrapper:hover) .interview-card-wrapper:not(:hover) {
+      filter: blur(1px);
+      opacity: 0.6;
+      transform: scale(0.95);
+      transition: filter 0.3s ease, opacity 0.3s ease, transform 0.3s ease;
+    }
+
+    .interview-card-wrapper {
+      transition: filter 0.3s ease, opacity 0.3s ease, transform 0.3s ease;
+    }
   }
 
-  .interview-card-wrapper {
-    transition: filter 0.3s ease, opacity 0.3s ease, transform 0.3s ease;
+  /* On touch devices, ensure no transitions for better performance */
+  @media (hover: none) {
+    .interview-card-wrapper {
+      transition: none;
+    }
   }
 
   .interview-text {
