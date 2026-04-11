@@ -24,6 +24,8 @@ import ShinyText from '@/components/ShinyText';
  import GenerateInterviewButton from "@/components/GenerateInterviewButton";
  import { getUserPremiumStatus } from "@/lib/actions/premium.action";
  import { hasUserVapiCredentials } from "@/lib/actions/vapi.action";
+ import { getResumeByUserId } from "@/lib/actions/resume.action";
+ import ResumeUploadSection from "@/components/resume/ResumeUploadSection";
 async function Home() {
   const clerkUser = await currentUser();
   const userId = clerkUser?.id;
@@ -38,13 +40,14 @@ async function Home() {
   });
 
   // Fetch user's own interviews, taken interviews, and all interviews from other users
-  const [userInterviews, takenInterviews, allInterviews, totalInterviewCount, isPremium, hasVapiCredentials] = await Promise.all([
+  const [userInterviews, takenInterviews, allInterviews, totalInterviewCount, isPremium, hasVapiCredentials, resume] = await Promise.all([
     userId ? getInterviewsByUserId(userId) : Promise.resolve(null),
     userId ? getInterviewsTakenByUser(userId) : Promise.resolve(null),
     userId ? getLatestInterviews({ userId, limit: 10 }) : Promise.resolve(null),
     getTotalInterviewCount(),
     userId ? getUserPremiumStatus(userId) : Promise.resolve(false),
     userId ? hasUserVapiCredentials(userId) : Promise.resolve(false),
+    userId ? getResumeByUserId(userId) : Promise.resolve(null),
   ]);
 
   const interviewCount = userInterviews?.length || 0;
@@ -155,6 +158,11 @@ const words = `Master interview performance with AI-driven practice sessions`;
 
       {userId && (
         <>
+          <section className="flex flex-col gap-6 mt-8 relative z-10 max-w-sm">
+            <h2>Your Resume</h2>
+            <ResumeUploadSection userId={userId} initialResume={resume} />
+          </section>
+
           <section className="flex flex-col gap-6 mt-8 relative z-10">
             <h2>Your Interviews</h2>
 

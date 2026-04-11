@@ -24,6 +24,7 @@ interface Interview {
   type: string;
   finalized: boolean;
   coverImage?: string;
+  companyName?: string | null;
 }
 
 interface CreateFeedbackParams {
@@ -47,6 +48,7 @@ interface InterviewCardProps {
   techstack: string[];
   createdAt?: string;
   coverImage?: string;
+  companyName?: string | null;
   isTaken?: boolean;
 }
 

@@ -9,6 +9,7 @@ import { hasUserVapiCredentials } from "@/lib/actions/vapi.action";
 import Agent from "@/components/Agent";
 import InterviewForm from "@/components/interview/InterviewForm";
 import GenerationMethodModal from "@/components/interview/GenerationMethodModal";
+import { getResumeByUserId, type ParsedResumeData } from "@/lib/actions/resume.action";
 
 type GenerationMethod = "call" | "form" | null;
 
@@ -19,6 +20,7 @@ const Page = () => {
   const [hasVapiCredentials, setHasVapiCredentials] = useState(false);
   const [loading, setLoading] = useState(true);
   const [selectedMethod, setSelectedMethod] = useState<GenerationMethod>(null);
+  const [resumeData, setResumeData] = useState<ParsedResumeData | null>(null);
 
   // Fetch user data on mount
   useEffect(() => {
@@ -29,11 +31,14 @@ const Page = () => {
       }
 
       try {
-        const [premium, interviews, hasDbCredentials] = await Promise.all([
+        const [premium, interviews, hasDbCredentials, resume] = await Promise.all([
           getUserPremiumStatus(clerkUser.id),
           getInterviewsByUserId(clerkUser.id),
           hasUserVapiCredentials(clerkUser.id),
+          getResumeByUserId(clerkUser.id),
         ]);
+
+        setResumeData(resume);
 
         setIsPremium(premium);
         setInterviewCount(interviews?.length || 0);
@@ -162,7 +167,7 @@ const Page = () => {
 
       {/* Render Form for form method */}
       {selectedMethod === "form" && (
-        <InterviewForm userId={clerkUser.id} />
+        <InterviewForm userId={clerkUser.id} resumeData={resumeData} />
       )}
     </>
   );

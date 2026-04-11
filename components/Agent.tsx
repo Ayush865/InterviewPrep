@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Vapi from "@vapi-ai/web";
 
@@ -47,6 +47,8 @@ const Agent = ({
   const [vapiInstance, setVapiInstance] = useState<any>(null);
   const [generatedInterviewId, setGeneratedInterviewId] = useState<string | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const feedbackGeneratedRef = useRef(false);
+  const messagesRef = useRef<SavedMessage[]>([]);
 
   // Initialize Vapi instance - use custom API key if available, otherwise default
   useEffect(() => {
@@ -117,7 +119,11 @@ const Agent = ({
       if (message.type === "transcript" && message.transcriptType === "final") {
         const newMessage = { role: message.role, content: message.transcript };
         console.log("💬 Final transcript:", newMessage);
-        setMessages((prev) => [...prev, newMessage]);
+        setMessages((prev) => {
+          const updated = [...prev, newMessage];
+          messagesRef.current = updated;
+          return updated;
+        });
       }
 
       // Capture function call result containing interviewId from generate endpoint
@@ -256,8 +262,10 @@ const Agent = ({
           };
           fetchLatestInterview();
         }
-      } else {
-        handleGenerateFeedback(messages);
+      } else if (!feedbackGeneratedRef.current && messages.length > 0) {
+        feedbackGeneratedRef.current = true;
+        // Wait 1s for any trailing VAPI transcripts to arrive after call-end, then use latest messages
+        setTimeout(() => handleGenerateFeedback(messagesRef.current), 1000);
       }
     }
   }, [messages, callStatus, feedbackId, interviewId, router, type, userId, generatedInterviewId]);

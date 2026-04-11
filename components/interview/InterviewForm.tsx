@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
+import { FileText } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -24,6 +25,7 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import TechstackMultiSelect from "./TechstackMultiSelect";
+import CompanySelect from "./CompanySelect";
 import InterviewSuccessModal from "./InterviewSuccessModal";
 
 import {
@@ -33,17 +35,26 @@ import {
 import { interviewLevels, interviewTypes, interviewRoles } from "@/constants";
 import { Minus, Plus, Loader2 } from "lucide-react";
 
-interface InterviewFormProps {
-  userId: string;
+interface ParsedResumeData {
+  parsedRole: string | null;
+  parsedLevel: string | null;
+  parsedSkills: string[];
+  parsedSummary: string | null;
+  fileName: string | null;
+  updatedAt: string;
 }
 
-const InterviewForm = ({ userId }: InterviewFormProps) => {
+interface InterviewFormProps {
+  userId: string;
+  resumeData?: ParsedResumeData | null;
+}
+
+const InterviewForm = ({ userId, resumeData }: InterviewFormProps) => {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [generatedInterviewId, setGeneratedInterviewId] = useState<
-    string | null
-  >(null);
+  const [generatedInterviewId, setGeneratedInterviewId] = useState<string | null>(null);
+  const [useResume, setUseResume] = useState(false);
 
   const form = useForm<InterviewFormData>({
     resolver: zodResolver(interviewFormSchema),
@@ -53,6 +64,8 @@ const InterviewForm = ({ userId }: InterviewFormProps) => {
       role: "",
       techstack: [],
       amount: 5,
+      company_name: undefined,
+      use_resume: false,
     },
   });
 
@@ -61,6 +74,32 @@ const InterviewForm = ({ userId }: InterviewFormProps) => {
   const handleAmountChange = (delta: number) => {
     const newAmount = Math.max(3, Math.min(15, amount + delta));
     form.setValue("amount", newAmount);
+  };
+
+  const handleResumeToggle = () => {
+    const next = !useResume;
+    setUseResume(next);
+    form.setValue("use_resume", next);
+
+    if (next && resumeData) {
+      // Pre-fill fields from resume as a convenience hint (still editable)
+      form.setValue("type", "technical");
+      if (resumeData.parsedRole) {
+        const matchedRole = interviewRoles.find(
+          (r) => r.value.toLowerCase() === resumeData.parsedRole!.toLowerCase()
+        );
+        if (matchedRole) form.setValue("role", matchedRole.value);
+      }
+      if (resumeData.parsedLevel) {
+        const matchedLevel = interviewLevels.find(
+          (l) => l.value === resumeData.parsedLevel
+        );
+        if (matchedLevel) form.setValue("level", matchedLevel.value);
+      }
+      if (resumeData.parsedSkills.length > 0) {
+        form.setValue("techstack", resumeData.parsedSkills.slice(0, 10));
+      }
+    }
   };
 
   const onSubmit = async (data: InterviewFormData) => {
@@ -77,6 +116,8 @@ const InterviewForm = ({ userId }: InterviewFormProps) => {
           techstack: data.techstack.join(", "),
           amount: data.amount,
           userid: userId,
+          company_name: data.company_name || null,
+          use_resume: data.use_resume || false,
         }),
       });
 
@@ -112,6 +153,35 @@ const InterviewForm = ({ userId }: InterviewFormProps) => {
     <>
       <div className="card-border p-6 rounded-xl w-full max-w-[540px] mx-auto">
         <h3 className="text-xl font-semibold mb-6">Generate Interview</h3>
+
+        {/* Generate from Resume toggle — only shown when resume exists */}
+        {resumeData && (
+          <div className="mb-6 p-3 rounded-lg bg-dark-200 border border-dark-300 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <FileText className="h-4 w-4 text-primary-200 shrink-0" />
+              <div>
+                <p className="text-sm font-medium">Use Resume Context</p>
+                <p className="text-xs text-light-400">
+                  Gemini will tailor questions to your background
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleResumeToggle}
+              className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors focus:outline-none ${
+                useResume ? "bg-primary-200" : "bg-dark-300"
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                  useResume ? "translate-x-4" : "translate-x-0.5"
+                }`}
+              />
+            </button>
+          </div>
+        )}
+
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             {/* Role Select */}
@@ -123,7 +193,7 @@ const InterviewForm = ({ userId }: InterviewFormProps) => {
                   <FormLabel>Role</FormLabel>
                   <Select
                     onValueChange={field.onChange}
-                    defaultValue={field.value}
+                    value={field.value}
                   >
                     <FormControl>
                       <SelectTrigger className="bg-dark-200 border-dark-200">
@@ -152,7 +222,7 @@ const InterviewForm = ({ userId }: InterviewFormProps) => {
                   <FormLabel>Experience Level</FormLabel>
                   <Select
                     onValueChange={field.onChange}
-                    defaultValue={field.value}
+                    value={field.value}
                   >
                     <FormControl>
                       <SelectTrigger className="bg-dark-200 border-dark-200">
@@ -196,6 +266,24 @@ const InterviewForm = ({ userId }: InterviewFormProps) => {
                       ))}
                     </SelectContent>
                   </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Company Select */}
+            <FormField
+              control={form.control}
+              name="company_name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Target Company <span className="text-light-400 font-normal">(optional)</span></FormLabel>
+                  <FormControl>
+                    <CompanySelect
+                      value={field.value}
+                      onChange={field.onChange}
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}

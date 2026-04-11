@@ -48,7 +48,21 @@ export interface Interview {
   questions: string[];  // Stored as JSON in DB
   finalized: boolean;
   cover_image: string | null;
+  company_name: string | null;
   created_at: Date;
+}
+
+export interface UserResume {
+  id: string;
+  user_id: string;
+  raw_text: string;
+  parsed_role: string | null;
+  parsed_level: string | null;
+  parsed_skills: string[] | null;  // Stored as JSON in DB
+  parsed_summary: string | null;
+  file_name: string | null;
+  created_at: Date;
+  updated_at: Date;
 }
 
 export interface CategoryScore {
@@ -281,6 +295,7 @@ export async function createInterview(interviewData: {
   questions: string[];
   finalized?: boolean;
   cover_image?: string;
+  company_name?: string;
 }): Promise<Interview> {
   const pool = getPool();
   const id = uuidv4();
@@ -288,8 +303,8 @@ export async function createInterview(interviewData: {
   try {
     await pool.execute(
       `INSERT INTO interviews
-       (id, user_id, role, type, level, techstack, questions, finalized, cover_image, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+       (id, user_id, role, type, level, techstack, questions, finalized, cover_image, company_name, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
       [
         id,
         interviewData.user_id,
@@ -300,6 +315,7 @@ export async function createInterview(interviewData: {
         JSON.stringify(interviewData.questions),
         interviewData.finalized || false,
         interviewData.cover_image || null,
+        interviewData.company_name || null,
       ]
     );
 
@@ -316,6 +332,7 @@ export async function createInterview(interviewData: {
       ...interviewData,
       finalized: interviewData.finalized || false,
       cover_image: interviewData.cover_image || null,
+      company_name: interviewData.company_name || null,
       created_at: new Date(),
     };
   } catch (error: any) {
@@ -648,6 +665,87 @@ export async function getInterviewsWithFeedbackByUserId(userId: string): Promise
     })) as Interview[];
   } catch (error: any) {
     logger.error(`[DB] Error fetching interviews with feedback by user:`, error);
+    throw new Error(`Database error: ${error.message}`);
+  }
+}
+
+// ============================================
+// USER RESUME OPERATIONS
+// ============================================
+
+/**
+ * Upsert a user's resume (insert or update on duplicate user_id).
+ * Each user has at most one active resume record.
+ */
+export async function upsertUserResume(resumeData: {
+  user_id: string;
+  raw_text: string;
+  parsed_role: string | null;
+  parsed_level: string | null;
+  parsed_skills: string[];
+  parsed_summary: string | null;
+  file_name: string | null;
+}): Promise<UserResume> {
+  const pool = getPool();
+  const id = uuidv4();
+
+  try {
+    await pool.execute(
+      `INSERT INTO user_resumes
+         (id, user_id, raw_text, parsed_role, parsed_level, parsed_skills, parsed_summary, file_name, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+       ON DUPLICATE KEY UPDATE
+         raw_text      = VALUES(raw_text),
+         parsed_role   = VALUES(parsed_role),
+         parsed_level  = VALUES(parsed_level),
+         parsed_skills = VALUES(parsed_skills),
+         parsed_summary= VALUES(parsed_summary),
+         file_name     = VALUES(file_name),
+         updated_at    = NOW()`,
+      [
+        id,
+        resumeData.user_id,
+        resumeData.raw_text,
+        resumeData.parsed_role,
+        resumeData.parsed_level,
+        JSON.stringify(resumeData.parsed_skills),
+        resumeData.parsed_summary,
+        resumeData.file_name,
+      ]
+    );
+
+    logger.info(`[DB] Resume upserted for user: ${resumeData.user_id}`);
+
+    // Fetch back the actual row (id may differ if it was an update)
+    const saved = await getUserResumeByUserId(resumeData.user_id);
+    return saved!;
+  } catch (error: any) {
+    logger.error(`[DB] Error upserting resume:`, error);
+    throw new Error(`Database error: ${error.message}`);
+  }
+}
+
+/**
+ * Get a user's resume by user ID
+ */
+export async function getUserResumeByUserId(userId: string): Promise<UserResume | null> {
+  const pool = getPool();
+
+  try {
+    const [rows] = await pool.execute<mysql.RowDataPacket[]>(
+      `SELECT * FROM user_resumes WHERE user_id = ? LIMIT 1`,
+      [userId]
+    );
+
+    if (rows.length === 0) return null;
+
+    const row = rows[0];
+    return {
+      ...row,
+      parsed_skills: safeJsonParse<string[]>(row.parsed_skills ?? '[]'),
+    } as UserResume;
+  } catch (error: any) {
+    logger.error(`[DB] Error fetching user resume:`, error);
     throw new Error(`Database error: ${error.message}`);
   }
 }

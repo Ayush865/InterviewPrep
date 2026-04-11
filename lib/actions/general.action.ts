@@ -1,8 +1,5 @@
 "use server";
 
-import { generateObject } from "ai";
-import { google } from "@ai-sdk/google";
-
 import { feedbackSchema } from "@/constants";
 import {
   createFeedback as createFeedbackInDB,
@@ -34,27 +31,60 @@ export async function createFeedback(params: CreateFeedbackParams) {
 
     logger.info(`[Feedback] Generating feedback for interview ${interviewId}`);
 
-    // Generate feedback using AI
-    const { object } = await generateObject({
-      model: google("gemini-2.0-flash-001", {
-        structuredOutputs: false,
-      }),
-      schema: feedbackSchema,
-      prompt: `
-        You are an AI interviewer analyzing a mock interview. Your task is to evaluate the candidate based on structured categories. Be thorough and detailed in your analysis. Don't be lenient with the candidate. If there are mistakes or areas for improvement, point them out.
-        Transcript:
-        ${formattedTranscript}
+    // Generate feedback using NVIDIA NIM (meta/llama-3.1-8b-instruct)
+    const nvidiaResponse = await fetch("https://integrate.api.nvidia.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${process.env.NVIDIA_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: "meta/llama-3.1-8b-instruct",
+        messages: [
+          {
+            role: "system",
+            content: "You are a professional interviewer analyzing a mock interview. Your task is to evaluate the candidate based on structured categories. Return ONLY valid JSON — no markdown, no extra text.",
+          },
+          {
+            role: "user",
+            content: `You are an AI interviewer analyzing a mock interview. Evaluate the candidate based on structured categories. Be thorough and detailed. Don't be lenient — point out mistakes and areas for improvement.
 
-        Please score the candidate from 0 to 100 in the following areas. Do not add categories other than the ones provided:
-        - **Communication Skills**: Clarity, articulation, structured responses.
-        - **Technical Knowledge**: Understanding of key concepts for the role.
-        - **Problem-Solving**: Ability to analyze problems and propose solutions.
-        - **Cultural & Role Fit**: Alignment with company values and job role.
-        - **Confidence & Clarity**: Confidence in responses, engagement, and clarity.
-        `,
-      system:
-        "You are a professional interviewer analyzing a mock interview. Your task is to evaluate the candidate based on structured categories",
+Transcript:
+${formattedTranscript}
+
+Score the candidate from 0 to 100 in each area and return ONLY this JSON structure:
+{
+  "totalScore": <number>,
+  "categoryScores": [
+    { "name": "Communication Skills", "score": <number>, "comment": "<string>" },
+    { "name": "Technical Knowledge", "score": <number>, "comment": "<string>" },
+    { "name": "Problem Solving", "score": <number>, "comment": "<string>" },
+    { "name": "Cultural Fit", "score": <number>, "comment": "<string>" },
+    { "name": "Confidence and Clarity", "score": <number>, "comment": "<string>" }
+  ],
+  "strengths": ["<string>", "..."],
+  "areasForImprovement": ["<string>", "..."],
+  "finalAssessment": "<string>"
+}`,
+          },
+        ],
+        temperature: 0.3,
+        max_tokens: 1024,
+      }),
     });
+
+    if (!nvidiaResponse.ok) {
+      throw new Error(`NVIDIA API error: ${await nvidiaResponse.text()}`);
+    }
+
+    const nvidiaData = await nvidiaResponse.json();
+    const rawContent = nvidiaData.choices[0].message.content;
+    const cleaned = rawContent
+      .replace(/^```json\s*/i, "")
+      .replace(/^```\s*/i, "")
+      .replace(/```\s*$/i, "")
+      .trim();
+    const object = feedbackSchema.parse(JSON.parse(cleaned));
 
     // Save feedback to MySQL
     const feedback = await createFeedbackInDB({
@@ -99,6 +129,7 @@ export async function getInterviewById(id: string): Promise<Interview | null> {
       questions: interview.questions,
       finalized: interview.finalized,
       coverImage: interview.cover_image,
+      companyName: interview.company_name ?? null,
       createdAt: interview.created_at.toISOString(),
     } as Interview;
   } catch (error) {
@@ -168,6 +199,7 @@ export async function getLatestInterviews(
       questions: interview.questions,
       finalized: interview.finalized,
       coverImage: interview.cover_image,
+      companyName: interview.company_name ?? null,
       createdAt: interview.created_at.toISOString(),
     })) as Interview[];
   } catch (error) {
@@ -202,6 +234,7 @@ export async function getInterviewsByUserId(
       questions: interview.questions,
       finalized: interview.finalized,
       coverImage: interview.cover_image,
+      companyName: interview.company_name ?? null,
       createdAt: interview.created_at.toISOString(),
     })) as Interview[];
   } catch (error) {
@@ -247,6 +280,7 @@ export async function getInterviewsTakenByUser(
       questions: interview.questions,
       finalized: interview.finalized,
       coverImage: interview.cover_image,
+      companyName: interview.company_name ?? null,
       createdAt: interview.created_at.toISOString(),
     })) as Interview[];
   } catch (error) {

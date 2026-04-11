@@ -158,3 +158,32 @@ COMMENT='Junction table tracking user feedback relationships';
 -- GROUP BY u.id
 -- HAVING avg_score > 70
 -- ORDER BY avg_score DESC;
+
+-- ============================================
+-- MIGRATION 001: company_name on interviews
+-- Run: db/migrations/001_add_company_name.sql
+-- ============================================
+-- ALTER TABLE interviews
+--   ADD COLUMN company_name VARCHAR(255) DEFAULT NULL AFTER cover_image;
+
+-- ============================================
+-- USER RESUMES TABLE (Migration 002)
+-- Run: db/migrations/002_create_user_resumes.sql
+-- ============================================
+CREATE TABLE IF NOT EXISTS user_resumes (
+  id              VARCHAR(36)   NOT NULL PRIMARY KEY,
+  user_id         VARCHAR(255)  NOT NULL,
+  raw_text        LONGTEXT      NOT NULL,
+  parsed_role     VARCHAR(255)  DEFAULT NULL,
+  parsed_level    VARCHAR(100)  DEFAULT NULL,
+  parsed_skills   JSON          DEFAULT NULL,
+  parsed_summary  TEXT          DEFAULT NULL,
+  file_name       VARCHAR(255)  DEFAULT NULL,
+  created_at      TIMESTAMP     DEFAULT CURRENT_TIMESTAMP,
+  updated_at      TIMESTAMP     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  UNIQUE KEY uq_user_resume (user_id),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  INDEX idx_user_id (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+COMMENT='Parsed resume data per user. One active resume per user (upserted on re-upload).';

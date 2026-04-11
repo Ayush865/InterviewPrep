@@ -1,4 +1,4 @@
-import { interviewCovers, mappings } from "@/constants";
+import { interviewCovers, companyToLogo, mappings } from "@/constants";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
@@ -94,6 +94,18 @@ export const getTechLogos = async (techArray: string[]) => {
       : "/tech.svg";
     return { tech, url };
   });
+};
+
+/**
+ * Returns the deterministic logo path for a known company,
+ * or falls back to a seeded-random cover when the company is unknown.
+ */
+export const getLogoForCompany = (companyName?: string | null, seed?: string): string => {
+  if (companyName) {
+    const logo = companyToLogo[companyName.toLowerCase()];
+    if (logo) return logo;
+  }
+  return getRandomInterviewCover(seed);
 };
 
 export const getRandomInterviewCover = (seed?: string) => {

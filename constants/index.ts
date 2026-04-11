@@ -205,6 +205,52 @@ export const feedbackSchema = z.object({
   finalAssessment: z.string(),
 });
 
+// Maps lowercase company key → logo path (used by getLogoForCompany in utils.ts)
+export const companyToLogo: Record<string, string> = {
+  adobe:      "/covers/Adobe.svg",
+  amazon:     "/covers/Amazon.svg",
+  apple:      "/covers/Apple.svg",
+  atlassian:  "/covers/Atlassian.svg",
+  dell:       "/covers/Dell.svg",
+  google:     "/covers/Google.svg",
+  linkedin:   "/covers/LinkedIn.svg",
+  meta:       "/covers/Meta.svg",
+  microsoft:  "/covers/Microsoft.svg",
+  netflix:    "/covers/Netflix.png",
+  nvidia:     "/covers/Nvidia.svg",
+  paypal:     "/covers/Paypal.svg",
+  salesforce: "/covers/Salesforce.svg",
+  spotify:    "/covers/Spotify.svg",
+  stripe:     "/covers/Stripe.svg",
+  tesla:      "/covers/Tesla.svg",
+  twitter:    "/covers/Twitter.svg",
+  uber:       "/covers/Uber.svg",
+  x:          "/covers/X.svg",
+};
+
+// Company options for the interview generation form dropdown
+export const interviewCompanies = [
+  { value: "adobe",      label: "Adobe" },
+  { value: "amazon",     label: "Amazon" },
+  { value: "apple",      label: "Apple" },
+  { value: "atlassian",  label: "Atlassian" },
+  { value: "dell",       label: "Dell" },
+  { value: "google",     label: "Google" },
+  { value: "linkedin",   label: "LinkedIn" },
+  { value: "meta",       label: "Meta" },
+  { value: "microsoft",  label: "Microsoft" },
+  { value: "netflix",    label: "Netflix" },
+  { value: "nvidia",     label: "Nvidia" },
+  { value: "paypal",     label: "PayPal" },
+  { value: "salesforce", label: "Salesforce" },
+  { value: "spotify",    label: "Spotify" },
+  { value: "stripe",     label: "Stripe" },
+  { value: "tesla",      label: "Tesla" },
+  { value: "twitter",    label: "Twitter" },
+  { value: "uber",       label: "Uber" },
+  { value: "x",          label: "X" },
+] as const;
+
 export const interviewCovers = [
   "/Adobe.svg",
   "/Amazon.svg",

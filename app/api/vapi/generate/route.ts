@@ -1,8 +1,9 @@
 import { generateText } from "ai";
 import { google } from "@ai-sdk/google";
 
-import { getRandomInterviewCover } from "@/lib/utils";
+import { getLogoForCompany } from "@/lib/utils";
 import { getUserById, getUserCounts, createInterview, createUser } from "@/lib/db-queries";
+import { getResumeVector } from "@/lib/vector-store";
 import { logger } from "@/lib/logger";
 import { hasUserVapiCredentials } from "@/lib/actions/vapi.action";
 
@@ -27,22 +28,22 @@ export async function POST(request: Request) {
     logger.info("Full request body:", JSON.stringify(body, null, 2));
 
     // Handle both Vapi function call format and direct parameters
-    let type, role, level, techstack, amount, userid;
+    let type, role, level, techstack, amount, userid, company_name, use_resume;
 
     if (body.message?.functionCall?.parameters) {
       // Vapi function call format
       const params = body.message.functionCall.parameters;
       logger.info("Function call parameters:", JSON.stringify(params, null, 2));
-      ({ type, role, level, techstack, amount, userid } = params);
+      ({ type, role, level, techstack, amount, userid, company_name, use_resume } = params);
       logger.info("Extracted from Vapi function call format");
     } else {
       // Direct parameters format
-      ({ type, role, level, techstack, amount, userid } = body);
+      ({ type, role, level, techstack, amount, userid, company_name, use_resume } = body);
       logger.info("Using direct parameters format");
     }
 
     logger.info("=== EXTRACTED VALUES ===");
-    logger.info(`type: ${type}, role: ${role}, level: ${level}, techstack: ${techstack}, amount: ${amount}, userid: ${userid}`);
+    logger.info(`type: ${type}, role: ${role}, level: ${level}, techstack: ${techstack}, amount: ${amount}, userid: ${userid}, company_name: ${company_name}, use_resume: ${use_resume}`);
 
     // Validate required fields and check for "NULL" string
     // if (!type || !role || !level || !techstack || !amount || !userid || userid === "NULL" || userid === "null") {
@@ -106,6 +107,37 @@ export async function POST(request: Request) {
       );
     }
 
+    // Optionally fetch resume context from Upstash Vector
+    let resumeContext = "";
+    if (use_resume && userid) {
+      try {
+        const resumeData = await getResumeVector(userid);
+        if (resumeData) {
+          resumeContext = `
+The candidate has provided their resume. Use the following background to tailor every question to this specific candidate — probe their actual experience, address skill gaps, and reference technologies they have used:
+- Current/Target Role: ${resumeData.parsed_role ?? "Not specified"}
+- Experience Level: ${resumeData.parsed_level ?? "Not specified"}
+- Skills: ${resumeData.parsed_skills?.join(", ") ?? "Not specified"}
+- Professional Summary: ${resumeData.parsed_summary ?? "Not specified"}
+- Full Resume:
+${resumeData.raw_text.substring(0, 6000)}
+`;
+          logger.info("[Interview] Resume context loaded from Upstash for user:", userid);
+        }
+      } catch (err) {
+        // Non-fatal — continue without resume context
+        logger.warn("[Interview] Could not load resume vector, proceeding without it:", err);
+      }
+    }
+
+    // Build company-specific context for the prompt
+    const companyContext = company_name
+      ? `The interview is specifically for a position at ${company_name}.
+         Generate questions that reflect ${company_name}'s known interview style, company values, and engineering culture.
+         Research and incorporate the latest interview patterns for a ${level}-level ${role} at ${company_name}.
+         Include questions that ${company_name} is known to ask, covering both their technical bar and cultural expectations.`
+      : `Generate high-quality, industry-standard interview questions.`;
+
     // Generate interview questions using AI
     const { text: questions } = await generateText({
       model: google("gemini-2.5-flash"),
@@ -115,6 +147,8 @@ export async function POST(request: Request) {
         The tech stack used in the job is: ${techstack}.
         The focus between behavioural and technical questions should lean towards: ${type}.
         The amount of questions required is: ${amount}.
+        ${companyContext}
+        ${resumeContext}
         Please return only the questions, without any additional text.
         The questions are going to be read by a voice assistant so do not use "/" or "*" or any other special characters which might break the voice assistant.
         Return the questions formatted like this:
@@ -135,7 +169,8 @@ export async function POST(request: Request) {
       techstack: techstack.split(",").map((t: string) => t.trim()),
       questions: JSON.parse(questions),
       finalized: true,
-      cover_image: getRandomInterviewCover(),
+      cover_image: getLogoForCompany(company_name),
+      company_name: company_name || null,
     });
 
     logger.info(`[Interview] Created interview ${interview.id} for user ${userid}`);

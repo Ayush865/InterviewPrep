@@ -1,7 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Prevent webpack from bundling these Node.js-only packages.
+  // pdf-parse uses pdfjs-dist which calls Object.defineProperty on non-objects
+  // when processed by the webpack RSC bundler.
+  serverExternalPackages: ["pdf-parse", "pdfjs-dist"],
   images: {
     remotePatterns: [
       {
