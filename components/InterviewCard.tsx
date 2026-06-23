@@ -8,6 +8,7 @@ import DisplayTechIcons from "./DisplayTechIcons";
 import { cn, getRandomInterviewCover } from "@/lib/utils";
 import { getFeedbackByInterviewId } from "@/lib/actions/general.action";
 import { getUserPremiumStatus, getUserFeedbackCount } from "@/lib/actions/premium.action";
+import { hasUserVapiCredentials } from "@/lib/actions/vapi.action";
 import TakeInterviewButton from "./TakeInterviewButton";
 
 const InterviewCard = async ({
@@ -28,13 +29,14 @@ const InterviewCard = async ({
         })
       : null;
 
-  // Fetch premium status and feedback count for limit checking
-  const [isPremium, feedbackCount] = userId
+  // Fetch premium status, feedback count, and Vapi credentials for limit checking
+  const [isPremium, feedbackCount, hasVapiCreds] = userId
     ? await Promise.all([
         getUserPremiumStatus(userId),
         getUserFeedbackCount(userId),
+        hasUserVapiCredentials(userId),
       ])
-    : [false, 0];
+    : [false, 0, false];
 
   const normalizedType = /mix/gi.test(type) ? "Mixed" : type;
 
@@ -112,6 +114,7 @@ const InterviewCard = async ({
 
           <TakeInterviewButton
             isPremium={isPremium}
+            hasVapiCredentials={hasVapiCreds}
             feedbackCount={feedbackCount}
             interviewId={interviewId || ""}
             hasFeedback={!!feedback}

@@ -7,6 +7,7 @@ import LimitReachedModal from "./LimitReachedModal";
 
 interface TakeInterviewButtonProps {
   isPremium: boolean;
+  hasVapiCredentials: boolean;
   feedbackCount: number;
   interviewId: string;
   hasFeedback: boolean;
@@ -14,14 +15,17 @@ interface TakeInterviewButtonProps {
 
 const TakeInterviewButton = ({
   isPremium,
+  hasVapiCredentials,
   feedbackCount,
   interviewId,
   hasFeedback,
 }: TakeInterviewButtonProps) => {
   const [showLimitModal, setShowLimitModal] = useState(false);
 
+  const canTakeUnlimited = isPremium || hasVapiCredentials;
+
   const handleClick = (e: React.MouseEvent) => {
-    if (!isPremium && feedbackCount >= 1 && !hasFeedback) {
+    if (!canTakeUnlimited && feedbackCount >= 1 && !hasFeedback) {
       e.preventDefault();
       setShowLimitModal(true);
     }
@@ -42,7 +46,7 @@ const TakeInterviewButton = ({
   return (
     <>
       <Button asChild className="btn-primary" onClick={handleClick}>
-        <Link href={(!isPremium && feedbackCount >= 1) ? "#" : `/interview/${interviewId}`}>
+        <Link href={(!canTakeUnlimited && feedbackCount >= 1) ? "#" : `/interview/${interviewId}`}>
           Take Interview
         </Link>
       </Button>

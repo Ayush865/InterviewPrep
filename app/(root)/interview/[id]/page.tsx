@@ -24,27 +24,15 @@ const InterviewDetails = async ({ params }: RouteParams) => {
     userId: clerkUser?.id!,
   });
 
-  // Check premium limits
   const { getUserFeedbackCount, getUserPremiumStatus } = await import("@/lib/actions/premium.action");
-  const isPremium = await getUserPremiumStatus(clerkUser?.id!);
-  const feedbackCount = await getUserFeedbackCount(clerkUser?.id!);
-  
-  const hasTakenInterview = !!feedback;
-  
-  // Debug logging
-  console.log('[INTERVIEW PAGE] Limit Check:', {
-    userId: clerkUser?.id,
-    interviewId: id,
-    isPremium,
-    feedbackCount,
-    hasTakenInterview,
-  });
-  
-  // Non-premium users can only take 1 interview total
-  // Block if: not premium AND has taken 1+ interviews
-  const limitReached = !isPremium && feedbackCount >= 1;
+  const { hasUserVapiCredentials } = await import("@/lib/actions/vapi.action");
+  const [isPremium, feedbackCount, hasVapiCredentials] = await Promise.all([
+    getUserPremiumStatus(clerkUser?.id!),
+    getUserFeedbackCount(clerkUser?.id!),
+    hasUserVapiCredentials(clerkUser?.id!),
+  ]);
 
-  console.log('[INTERVIEW PAGE] Limit reached?', limitReached);
+  const limitReached = !isPremium && !hasVapiCredentials && feedbackCount >= 1;
 
   if (limitReached) {
     return (

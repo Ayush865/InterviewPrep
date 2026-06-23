@@ -1,11 +1,10 @@
-import { generateText } from "ai";
-import { google } from "@ai-sdk/google";
-
 import { getLogoForCompany } from "@/lib/utils";
 import { getUserById, getUserCounts, createInterview, createUser } from "@/lib/db-queries";
 import { getResumeVector } from "@/lib/vector-store";
 import { logger } from "@/lib/logger";
 import { hasUserVapiCredentials } from "@/lib/actions/vapi.action";
+
+const NVIDIA_BASE_URL = "https://integrate.api.nvidia.com/v1";
 
 // Add CORS headers for Vapi to access this endpoint
 const corsHeaders = {
@@ -138,10 +137,7 @@ ${resumeData.raw_text.substring(0, 6000)}
          Include questions that ${company_name} is known to ask, covering both their technical bar and cultural expectations.`
       : `Generate high-quality, industry-standard interview questions.`;
 
-    // Generate interview questions using AI
-    const { text: questions } = await generateText({
-      model: google("gemini-2.5-flash"),
-      prompt: `Prepare questions for a job interview.
+    const questionPrompt = `Prepare questions for a job interview.
         The job role is ${role}.
         The job experience level is ${level}.
         The tech stack used in the job is: ${techstack}.
@@ -155,8 +151,29 @@ ${resumeData.raw_text.substring(0, 6000)}
         ["Question 1", "Question 2", "Question 3"]
 
         Thank you! <3
-    `,
+    `;
+
+    // Generate interview questions via NVIDIA NIM
+    const nimResponse = await fetch(`${NVIDIA_BASE_URL}/chat/completions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.NVIDIA_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: "meta/llama-3.1-8b-instruct",
+        messages: [{ role: "user", content: questionPrompt }],
+        temperature: 0,
+        max_tokens: 1024,
+      }),
     });
+
+    if (!nimResponse.ok) {
+      throw new Error(`NVIDIA API error: ${await nimResponse.text()}`);
+    }
+
+    const nimData = await nimResponse.json();
+    const questions: string = nimData.choices[0].message.content;
 
     logger.info("[Interview] Generated questions successfully");
 
