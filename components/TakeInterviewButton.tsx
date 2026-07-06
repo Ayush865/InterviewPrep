@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import LimitReachedModal from "./LimitReachedModal";
 
@@ -13,6 +12,9 @@ interface TakeInterviewButtonProps {
   hasFeedback: boolean;
 }
 
+const buttonClass =
+  "inline-flex h-9 cursor-pointer items-center justify-center rounded-full border border-white/[0.14] px-4 text-sm font-medium text-white transition-colors duration-200 hover:border-accent/60 hover:bg-accent/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent";
+
 const TakeInterviewButton = ({
   isPremium,
   hasVapiCredentials,
@@ -23,33 +25,33 @@ const TakeInterviewButton = ({
   const [showLimitModal, setShowLimitModal] = useState(false);
 
   const canTakeUnlimited = isPremium || hasVapiCredentials;
+  const limitReached = !canTakeUnlimited && feedbackCount >= 1 && !hasFeedback;
 
   const handleClick = (e: React.MouseEvent) => {
-    if (!canTakeUnlimited && feedbackCount >= 1 && !hasFeedback) {
+    if (limitReached) {
       e.preventDefault();
       setShowLimitModal(true);
     }
   };
 
-  // If user already has feedback for this interview, show "Check Feedback"
+  // If user already has feedback for this interview, link to it
   if (hasFeedback) {
     return (
-      <Button className="btn-primary">
-        <Link href={`/interview/${interviewId}/feedback`}>
-          Check Feedback
-        </Link>
-      </Button>
+      <Link href={`/interview/${interviewId}/feedback`} className={buttonClass}>
+        View feedback
+      </Link>
     );
   }
 
-  // Otherwise show "Take Interview" with limit check
   return (
     <>
-      <Button asChild className="btn-primary" onClick={handleClick}>
-        <Link href={(!canTakeUnlimited && feedbackCount >= 1) ? "#" : `/interview/${interviewId}`}>
-          Take Interview
-        </Link>
-      </Button>
+      <Link
+        href={limitReached ? "#" : `/interview/${interviewId}`}
+        onClick={handleClick}
+        className={buttonClass}
+      >
+        Take interview
+      </Link>
 
       <LimitReachedModal
         isOpen={showLimitModal}
@@ -62,4 +64,3 @@ const TakeInterviewButton = ({
 };
 
 export default TakeInterviewButton;
-

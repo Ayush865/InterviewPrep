@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { FileText } from "lucide-react";
+import { FileText, Minus, Plus, Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -33,7 +33,6 @@ import {
   type InterviewFormData,
 } from "@/lib/validations/interview";
 import { interviewLevels, interviewTypes, interviewRoles } from "@/constants";
-import { Minus, Plus, Loader2 } from "lucide-react";
 
 interface ParsedResumeData {
   parsedRole: string | null;
@@ -151,31 +150,37 @@ const InterviewForm = ({ userId, resumeData }: InterviewFormProps) => {
 
   return (
     <>
-      <div className="card-border p-6 rounded-xl w-full max-w-[540px] mx-auto">
-        <h3 className="text-xl font-semibold mb-6">Generate Interview</h3>
-
-        {/* Generate from Resume toggle — only shown when resume exists */}
+      <div className="panel w-full p-8 max-sm:p-6">
+        {/* Resume context toggle — only shown when a resume exists */}
         {resumeData && (
-          <div className="mb-6 p-3 rounded-lg bg-dark-200 border border-dark-300 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <FileText className="h-4 w-4 text-primary-200 shrink-0" />
+          <div className="mb-8 flex items-center justify-between gap-4 rounded-xl border border-white/[0.08] bg-white/[0.03] p-4">
+            <div className="flex items-center gap-3">
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-white/[0.08] bg-white/[0.04]">
+                <FileText className="size-4 text-accent" aria-hidden="true" />
+              </div>
               <div>
-                <p className="text-sm font-medium">Use Resume Context</p>
-                <p className="text-xs text-light-400">
-                  Gemini will tailor questions to your background
+                <p className="text-sm font-medium text-white">
+                  Use resume context
+                </p>
+                <p className="text-xs text-zinc-500">
+                  Tailor questions to your background
+                  {resumeData.fileName ? ` — ${resumeData.fileName}` : ""}
                 </p>
               </div>
             </div>
             <button
               type="button"
+              role="switch"
+              aria-checked={useResume}
+              aria-label="Use resume context"
               onClick={handleResumeToggle}
-              className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors focus:outline-none ${
-                useResume ? "bg-primary-200" : "bg-dark-300"
+              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
+                useResume ? "bg-accent" : "bg-white/[0.12]"
               }`}
             >
               <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
-                  useResume ? "translate-x-4" : "translate-x-0.5"
+                className={`inline-block size-5 transform rounded-full bg-white shadow transition-transform duration-200 ${
+                  useResume ? "translate-x-[22px]" : "translate-x-0.5"
                 }`}
               />
             </button>
@@ -184,63 +189,63 @@ const InterviewForm = ({ userId, resumeData }: InterviewFormProps) => {
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            {/* Role Select */}
-            <FormField
-              control={form.control}
-              name="role"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Role</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    value={field.value}
-                  >
-                    <FormControl>
-                      <SelectTrigger className="bg-dark-200 border-dark-200">
-                        <SelectValue placeholder="Select a role" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent className="bg-dark-200 border-dark-200">
-                      {interviewRoles.map((role) => (
-                        <SelectItem key={role.value} value={role.value}>
-                          {role.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+              {/* Role Select */}
+              <FormField
+                control={form.control}
+                name="role"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm font-medium text-zinc-300">
+                      Role
+                    </FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger className="field-trigger">
+                          <SelectValue placeholder="Select a role" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent className="border-white/[0.1] bg-surface-overlay">
+                        {interviewRoles.map((role) => (
+                          <SelectItem key={role.value} value={role.value}>
+                            {role.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            {/* Level Select */}
-            <FormField
-              control={form.control}
-              name="level"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Experience Level</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    value={field.value}
-                  >
-                    <FormControl>
-                      <SelectTrigger className="bg-dark-200 border-dark-200">
-                        <SelectValue placeholder="Select experience level" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent className="bg-dark-200 border-dark-200">
-                      {interviewLevels.map((level) => (
-                        <SelectItem key={level.value} value={level.value}>
-                          {level.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+              {/* Level Select */}
+              <FormField
+                control={form.control}
+                name="level"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm font-medium text-zinc-300">
+                      Experience level
+                    </FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger className="field-trigger">
+                          <SelectValue placeholder="Select level" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent className="border-white/[0.1] bg-surface-overlay">
+                        {interviewLevels.map((level) => (
+                          <SelectItem key={level.value} value={level.value}>
+                            {level.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
             {/* Type Select */}
             <FormField
@@ -248,17 +253,16 @@ const InterviewForm = ({ userId, resumeData }: InterviewFormProps) => {
               name="type"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Interview Type</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                  >
+                  <FormLabel className="text-sm font-medium text-zinc-300">
+                    Interview type
+                  </FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
-                      <SelectTrigger className="bg-dark-200 border-dark-200">
+                      <SelectTrigger className="field-trigger">
                         <SelectValue placeholder="Select interview type" />
                       </SelectTrigger>
                     </FormControl>
-                    <SelectContent className="bg-dark-200 border-dark-200">
+                    <SelectContent className="border-white/[0.1] bg-surface-overlay">
                       {interviewTypes.map((type) => (
                         <SelectItem key={type.value} value={type.value}>
                           {type.label}
@@ -277,12 +281,12 @@ const InterviewForm = ({ userId, resumeData }: InterviewFormProps) => {
               name="company_name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Target Company <span className="text-light-400 font-normal">(optional)</span></FormLabel>
+                  <FormLabel className="text-sm font-medium text-zinc-300">
+                    Target company{" "}
+                    <span className="font-normal text-zinc-500">(optional)</span>
+                  </FormLabel>
                   <FormControl>
-                    <CompanySelect
-                      value={field.value}
-                      onChange={field.onChange}
-                    />
+                    <CompanySelect value={field.value} onChange={field.onChange} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -295,7 +299,9 @@ const InterviewForm = ({ userId, resumeData }: InterviewFormProps) => {
               name="techstack"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Tech Stack</FormLabel>
+                  <FormLabel className="text-sm font-medium text-zinc-300">
+                    Tech stack
+                  </FormLabel>
                   <FormControl>
                     <TechstackMultiSelect
                       selected={field.value}
@@ -307,32 +313,36 @@ const InterviewForm = ({ userId, resumeData }: InterviewFormProps) => {
               )}
             />
 
-            {/* Amount with +/- Controls */}
+            {/* Question count stepper */}
             <FormField
               control={form.control}
               name="amount"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Number of Questions</FormLabel>
-                  <div className="flex items-center gap-4">
+                  <FormLabel className="text-sm font-medium text-zinc-300">
+                    Number of questions
+                  </FormLabel>
+                  <div className="flex items-center gap-3">
                     <Button
                       type="button"
                       variant="outline"
                       size="icon"
                       onClick={() => handleAmountChange(-1)}
                       disabled={amount <= 3}
-                      className="bg-dark-200 border-dark-200"
+                      aria-label="Fewer questions"
+                      className="size-12 rounded-xl border-white/[0.1] bg-white/[0.04] hover:border-white/[0.2] hover:bg-white/[0.08]"
                     >
-                      <Minus className="h-4 w-4" />
+                      <Minus className="size-4" aria-hidden="true" />
                     </Button>
                     <FormControl>
                       <Input
                         type="number"
                         {...field}
                         onChange={(e) => field.onChange(Number(e.target.value))}
-                        className="w-20 text-center bg-dark-200 border-dark-200"
+                        className="field-trigger w-20 text-center"
                         min={3}
                         max={15}
+                        aria-label="Number of questions"
                       />
                     </FormControl>
                     <Button
@@ -341,30 +351,34 @@ const InterviewForm = ({ userId, resumeData }: InterviewFormProps) => {
                       size="icon"
                       onClick={() => handleAmountChange(1)}
                       disabled={amount >= 15}
-                      className="bg-dark-200 border-dark-200"
+                      aria-label="More questions"
+                      className="size-12 rounded-xl border-white/[0.1] bg-white/[0.04] hover:border-white/[0.2] hover:bg-white/[0.08]"
                     >
-                      <Plus className="h-4 w-4" />
+                      <Plus className="size-4" aria-hidden="true" />
                     </Button>
+                    <span className="ml-1 text-sm text-zinc-500">
+                      3–15 questions
+                    </span>
                   </div>
                   <FormMessage />
                 </FormItem>
               )}
             />
 
-            <Button
+            <button
               type="submit"
-              className="w-full btn-primary"
+              className="btn-accent h-12 w-full text-base"
               disabled={isSubmitting}
             >
               {isSubmitting ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Generating Interview...
+                  <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                  Generating interview…
                 </>
               ) : (
-                "Generate Interview"
+                "Generate interview"
               )}
-            </Button>
+            </button>
           </form>
         </Form>
       </div>

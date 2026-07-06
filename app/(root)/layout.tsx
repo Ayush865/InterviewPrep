@@ -3,71 +3,100 @@ import Image from "next/image";
 import { ReactNode } from "react";
 import { currentUser } from "@clerk/nextjs/server";
 import { UserButton } from "@clerk/nextjs";
+import { Settings } from "lucide-react";
 import LogoutHandler from "@/components/LogoutHandler";
 
 const Layout = async ({ children }: { children: ReactNode }) => {
   const user = await currentUser();
 
   return (
-    <div className="root-layout flex flex-col min-h-screen">
+    <div className="flex min-h-screen flex-col">
       {user && <LogoutHandler />}
-      <nav className="flex items-center justify-between relative z-50">
-        <Link href="/" className="flex items-center justify-center gap-2">
-          <Image src="/logo.png" alt="MockMate Logo" width={70} height={70} />
-          <div className="pt-4 max-sm:hidden">
-            <h2 className="text-primary-10">Hired <span className="text-orange">Fox</span></h2>
-          </div>
-        </Link>
 
-        <div className="flex items-center gap-4">
-          {user ? (
-            <>
-              <Link
-                href="/settings/vapi"
-                className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 transition-all duration-200"
-                aria-label="Vapi Settings"
-              >
-                <svg
-                  className="w-5 h-5 text-white flex-shrink-0"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
+      <header className="glass-nav">
+        <nav className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-6">
+          <Link
+            href="/"
+            className="flex items-center gap-2.5"
+            aria-label="Hired Fox home"
+          >
+            <Image
+              src="/logo.png"
+              alt=""
+              width={36}
+              height={36}
+              className="size-9 object-contain"
+            />
+            <span className="text-[17px] font-semibold tracking-tight text-white">
+              Hired<span className="text-accent"> Fox</span>
+            </span>
+          </Link>
+
+          <div className="flex items-center gap-2">
+            {user ? (
+              <>
+                <Link
+                  href="/interview"
+                  className="hidden rounded-full px-4 py-2 text-sm font-medium text-zinc-300 transition-colors duration-200 hover:bg-white/[0.06] hover:text-white sm:inline-flex"
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+                  New interview
+                </Link>
+                <Link
+                  href="/settings/vapi"
+                  className="inline-flex size-10 items-center justify-center rounded-full text-zinc-300 transition-colors duration-200 hover:bg-white/[0.06] hover:text-white"
+                  aria-label="Vapi settings"
+                >
+                  <Settings className="size-5" aria-hidden="true" />
+                </Link>
+                <div className="ml-1">
+                  <UserButton
+                    appearance={{
+                      elements: { avatarBox: "size-9" },
+                    }}
                   />
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                  />
-                </svg>
-                <span className="hidden sm:inline text-white text-sm font-medium">Vapi Settings</span>
+                </div>
+              </>
+            ) : (
+              <Link
+                href="/sign-in"
+                className="btn-cta !h-9 !px-5 text-sm"
+              >
+                Sign in
               </Link>
+            )}
+          </div>
+        </nav>
+      </header>
 
-              <UserButton
-                appearance={{
-                  elements: {
-                    avatarBox: "w-12 h-12",
-                  },
-                }}
-              />
-            </>
-          ) : (
+      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-6">
+        {children}
+      </main>
+
+      <footer className="border-t border-white/[0.07]">
+        <div className="mx-auto flex w-full max-w-6xl flex-col items-center justify-between gap-3 px-6 py-8 sm:flex-row">
+          <div className="flex items-center gap-2">
+            <Image
+              src="/logo.png"
+              alt=""
+              width={22}
+              height={22}
+              className="size-[22px] object-contain"
+            />
+            <span className="text-sm text-zinc-500">
+              © {new Date().getFullYear()} Hired Fox
+            </span>
+          </div>
+          <p className="text-sm text-zinc-500">
+            Built by{" "}
             <Link
-              href="/sign-in"
-              className="flex items-center gap-2 px-6 py-2 rounded-full bg-orange hover:bg-orange/80 text-white font-semibold transition-all duration-200"
+              href="https://www.linkedin.com/in/ayush-prakash-2bb65122b/"
+              className="font-medium text-zinc-300 transition-colors duration-200 hover:text-accent"
             >
-              Login
+              Ayush Prakash
             </Link>
-          )}
+          </p>
         </div>
-      </nav>
-      {children}
+      </footer>
     </div>
   );
 };

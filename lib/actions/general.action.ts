@@ -11,8 +11,29 @@ import {
   getTotalInterviewCount as getTotalInterviewCountFromDB,
   getInterviewsWithFeedbackByUserId as getInterviewsWithFeedbackByUserIdFromDB,
   getMostRecentInterviewByUserId,
+  getUserDashboardInterviews,
+  getDiscoverInterviews,
+  getFeedbacksByUserAndInterviewIds,
+  type Interview as InterviewRow,
 } from "@/lib/db-queries";
 import { logger } from "@/lib/logger";
+
+/** Map a snake_case DB interview row to the camelCase app shape */
+function mapInterview(interview: InterviewRow): Interview {
+  return {
+    id: interview.id,
+    userId: interview.user_id,
+    role: interview.role,
+    type: interview.type,
+    level: interview.level,
+    techstack: interview.techstack,
+    questions: interview.questions,
+    finalized: interview.finalized,
+    coverImage: interview.cover_image,
+    companyName: interview.company_name ?? null,
+    createdAt: interview.created_at.toISOString(),
+  } as Interview;
+}
 
 /**
  * Create feedback for an interview using AI analysis
@@ -293,6 +314,104 @@ export async function getInterviewsTakenByUser(
  * Get the most recently created interview for a user
  * Used to fetch interview ID after VAPI call ends
  */
+export interface DashboardInterview extends Interview {
+  isTaken: boolean;
+}
+
+export interface FeedbackSummary {
+  totalScore: number;
+  finalAssessment: string;
+  createdAt: string;
+}
+
+/**
+ * Paginated "your interviews" (created + taken) for the dashboard
+ */
+export async function getUserInterviewsPage(
+  userId: string,
+  page: number,
+  pageSize: number
+): Promise<{ interviews: DashboardInterview[]; total: number }> {
+  if (!userId) return { interviews: [], total: 0 };
+
+  try {
+    const offset = (Math.max(1, page) - 1) * pageSize;
+    const { interviews, total } = await getUserDashboardInterviews(
+      userId,
+      pageSize,
+      offset
+    );
+
+    return {
+      interviews: interviews.map((row) => ({
+        ...mapInterview(row),
+        isTaken: row.is_taken,
+      })),
+      total,
+    };
+  } catch (error) {
+    logger.error("[Interview] Error fetching user interviews page:", error);
+    return { interviews: [], total: 0 };
+  }
+}
+
+/**
+ * Paginated community interviews the user hasn't taken yet
+ */
+export async function getDiscoverInterviewsPage(
+  userId: string,
+  page: number,
+  pageSize: number
+): Promise<{ interviews: Interview[]; total: number }> {
+  if (!userId) return { interviews: [], total: 0 };
+
+  try {
+    const offset = (Math.max(1, page) - 1) * pageSize;
+    const { interviews, total } = await getDiscoverInterviews(
+      userId,
+      pageSize,
+      offset
+    );
+
+    return { interviews: interviews.map(mapInterview), total };
+  } catch (error) {
+    logger.error("[Interview] Error fetching discover interviews page:", error);
+    return { interviews: [], total: 0 };
+  }
+}
+
+/**
+ * Batch feedback summaries for a set of interviews, keyed by interview ID.
+ * One query instead of one per interview card.
+ */
+export async function getFeedbackSummaries(
+  userId: string,
+  interviewIds: string[]
+): Promise<Record<string, FeedbackSummary>> {
+  if (!userId || interviewIds.length === 0) return {};
+
+  try {
+    const feedbacks = await getFeedbacksByUserAndInterviewIds(
+      userId,
+      interviewIds
+    );
+
+    return Object.fromEntries(
+      feedbacks.map((feedback) => [
+        feedback.interview_id,
+        {
+          totalScore: feedback.total_score,
+          finalAssessment: feedback.final_assessment,
+          createdAt: feedback.created_at.toISOString(),
+        },
+      ])
+    );
+  } catch (error) {
+    logger.error("[Feedback] Error batch fetching feedback summaries:", error);
+    return {};
+  }
+}
+
 export async function getLatestGeneratedInterview(
   userId: string
 ): Promise<{ success: boolean; interviewId?: string }> {

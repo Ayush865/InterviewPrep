@@ -1,19 +1,20 @@
 import { Toaster } from "sonner";
 import type { Metadata } from "next";
-import { Poppins } from "next/font/google";
+import { Inter } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 
 import "./globals.css";
 
-const poppins = Poppins({
-  variable: "--font-poppins",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700", "800"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "Hired Fox",
-  description: "An AI-powered platform for preparing for mock interviews",
+  title: "Hired Fox — AI Mock Interviews",
+  description:
+    "Practice real interviews with an AI interviewer. Get instant, data-backed feedback and improve with every session.",
 };
 
 export default function RootLayout({
@@ -24,10 +25,10 @@ export default function RootLayout({
   return (
     <ClerkProvider>
       <html lang="en" className="dark">
-        <body className={`${poppins.className}`}>
+        <body className={`${inter.variable} font-sans`}>
           {children}
 
-          <Toaster />
+          <Toaster theme="dark" position="bottom-right" />
         </body>
       </html>
     </ClerkProvider>

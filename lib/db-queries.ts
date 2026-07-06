@@ -489,6 +489,111 @@ export async function getLatestInterviewsExcludingUser(
   }
 }
 
+export interface UserInterviewRow extends Interview {
+  is_taken: boolean;
+}
+
+/**
+ * Paginated "your interviews" for a user: interviews they created plus
+ * interviews by others they have completed (have feedback for), newest first.
+ * Replaces two separate queries + in-memory merge on the dashboard.
+ */
+export async function getUserDashboardInterviews(
+  userId: string,
+  limit: number,
+  offset: number
+): Promise<{ interviews: UserInterviewRow[]; total: number }> {
+  const pool = getPool();
+  const safeLimit = Math.max(1, parseInt(String(limit), 10) || 1);
+  const safeOffset = Math.max(0, parseInt(String(offset), 10) || 0);
+
+  try {
+    const [rows] = await pool.execute<mysql.RowDataPacket[]>(
+      `SELECT i.*, (f.id IS NOT NULL AND i.user_id != ?) AS is_taken
+       FROM interviews i
+       LEFT JOIN feedbacks f ON f.interview_id = i.id AND f.user_id = ?
+       WHERE i.user_id = ? OR f.id IS NOT NULL
+       ORDER BY i.created_at DESC
+       LIMIT ${safeLimit} OFFSET ${safeOffset}`,
+      [userId, userId, userId]
+    );
+
+    const [countRows] = await pool.execute<mysql.RowDataPacket[]>(
+      `SELECT COUNT(*) as count
+       FROM interviews i
+       LEFT JOIN feedbacks f ON f.interview_id = i.id AND f.user_id = ?
+       WHERE i.user_id = ? OR f.id IS NOT NULL`,
+      [userId, userId]
+    );
+
+    return {
+      interviews: rows.map((row) => ({
+        ...row,
+        is_taken: Boolean(row.is_taken),
+        techstack: safeJsonParse<string[]>(row.techstack),
+        questions: safeJsonParse<string[]>(row.questions),
+      })) as UserInterviewRow[],
+      total: countRows[0].count || 0,
+    };
+  } catch (error: any) {
+    logger.error(`[DB] Error fetching dashboard interviews:`, error);
+    throw new Error(`Database error: ${error.message}`);
+  }
+}
+
+/**
+ * Paginated community interviews the user can still take: finalized,
+ * created by others, and not yet completed by this user.
+ * Moves the "already taken" filtering into SQL instead of post-filtering in JS.
+ */
+export async function getDiscoverInterviews(
+  userId: string,
+  limit: number,
+  offset: number
+): Promise<{ interviews: Interview[]; total: number }> {
+  const pool = getPool();
+  const safeLimit = Math.max(1, parseInt(String(limit), 10) || 1);
+  const safeOffset = Math.max(0, parseInt(String(offset), 10) || 0);
+
+  try {
+    const [rows] = await pool.execute<mysql.RowDataPacket[]>(
+      `SELECT i.* FROM interviews i
+       WHERE i.finalized = true
+         AND i.user_id != ?
+         AND NOT EXISTS (
+           SELECT 1 FROM feedbacks f
+           WHERE f.interview_id = i.id AND f.user_id = ?
+         )
+       ORDER BY i.created_at DESC
+       LIMIT ${safeLimit} OFFSET ${safeOffset}`,
+      [userId, userId]
+    );
+
+    const [countRows] = await pool.execute<mysql.RowDataPacket[]>(
+      `SELECT COUNT(*) as count FROM interviews i
+       WHERE i.finalized = true
+         AND i.user_id != ?
+         AND NOT EXISTS (
+           SELECT 1 FROM feedbacks f
+           WHERE f.interview_id = i.id AND f.user_id = ?
+         )`,
+      [userId, userId]
+    );
+
+    return {
+      interviews: rows.map((row) => ({
+        ...row,
+        techstack: safeJsonParse<string[]>(row.techstack),
+        questions: safeJsonParse<string[]>(row.questions),
+      })) as Interview[],
+      total: countRows[0].count || 0,
+    };
+  } catch (error: any) {
+    logger.error(`[DB] Error fetching discover interviews:`, error);
+    throw new Error(`Database error: ${error.message}`);
+  }
+}
+
 /**
  * Get total interview count
  */
@@ -619,6 +724,38 @@ export async function getFeedbackByInterviewAndUser(
     } as Feedback;
   } catch (error: any) {
     logger.error(`[DB] Error fetching feedback:`, error);
+    throw new Error(`Database error: ${error.message}`);
+  }
+}
+
+/**
+ * Batch-fetch a user's feedbacks for a set of interviews in one query.
+ * Replaces one query per interview card on the dashboard.
+ */
+export async function getFeedbacksByUserAndInterviewIds(
+  userId: string,
+  interviewIds: string[]
+): Promise<Feedback[]> {
+  if (interviewIds.length === 0) return [];
+
+  const pool = getPool();
+  const placeholders = interviewIds.map(() => "?").join(", ");
+
+  try {
+    const [rows] = await pool.execute<mysql.RowDataPacket[]>(
+      `SELECT * FROM feedbacks
+       WHERE user_id = ? AND interview_id IN (${placeholders})`,
+      [userId, ...interviewIds]
+    );
+
+    return rows.map((row) => ({
+      ...row,
+      category_scores: safeJsonParse<CategoryScore[]>(row.category_scores),
+      strengths: safeJsonParse<string[]>(row.strengths),
+      areas_for_improvement: safeJsonParse<string[]>(row.areas_for_improvement),
+    })) as Feedback[];
+  } catch (error: any) {
+    logger.error(`[DB] Error batch fetching feedbacks:`, error);
     throw new Error(`Database error: ${error.message}`);
   }
 }

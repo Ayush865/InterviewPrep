@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { Plus } from "lucide-react";
 import LimitReachedModal from "./LimitReachedModal";
 
 interface GenerateInterviewButtonProps {
@@ -19,23 +19,25 @@ const GenerateInterviewButton = ({
   const [showLimitModal, setShowLimitModal] = useState(false);
 
   const canGenerateUnlimited = isPremium || hasVapiCredentials;
+  const limitReached = !canGenerateUnlimited && interviewCount >= 1;
 
   const handleClick = (e: React.MouseEvent) => {
-    if (!canGenerateUnlimited && interviewCount >= 1) {
+    if (limitReached) {
       e.preventDefault();
       setShowLimitModal(true);
     }
   };
-  
-  console.log("GenerateInterviewButton - Props:", { isPremium, interviewCount, hasVapiCredentials, canGenerateUnlimited });
 
   return (
     <>
-      <Button asChild className="btn-primary-generate max-sm:w-full" onClick={handleClick}>
-        <Link href={(!canGenerateUnlimited && interviewCount >= 1) ? "#" : "/interview"}>
-          Generate Interview
-        </Link>
-      </Button>
+      <Link
+        href={limitReached ? "#" : "/interview"}
+        onClick={handleClick}
+        className="btn-accent max-sm:w-full"
+      >
+        <Plus className="size-4" aria-hidden="true" />
+        Generate interview
+      </Link>
 
       <LimitReachedModal
         isOpen={showLimitModal}
@@ -48,4 +50,3 @@ const GenerateInterviewButton = ({
 };
 
 export default GenerateInterviewButton;
-

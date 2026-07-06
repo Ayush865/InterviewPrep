@@ -2,8 +2,7 @@
 
 import { createPortal } from "react-dom";
 import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { X, Lock } from "lucide-react";
+import { X, Lock, Settings } from "lucide-react";
 import Link from "next/link";
 
 interface LimitReachedModalProps {
@@ -11,13 +10,13 @@ interface LimitReachedModalProps {
   onClose: () => void;
   title?: string;
   messageLine1: string;
-  messageLine2:string
+  messageLine2: string;
 }
 
 const LimitReachedModal = ({
   isOpen,
   onClose,
-  title = "Limit Reached",
+  title = "Limit reached",
   messageLine1,
   messageLine2,
 }: LimitReachedModalProps) => {
@@ -27,49 +26,62 @@ const LimitReachedModal = ({
     setMounted(true);
   }, []);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [isOpen, onClose]);
+
   if (!mounted || !isOpen) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm">
-      <div className="relative w-full max-w-md p-6 bg-dark-300 border border-slate-purple rounded-xl shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="limit-modal-title"
+        onClick={(e) => e.stopPropagation()}
+        className="animate-in fade-in zoom-in-95 relative w-full max-w-md rounded-2xl border border-white/[0.1] bg-surface-overlay p-7 shadow-2xl duration-200"
+      >
         <button
           onClick={onClose}
-          className="absolute right-4 top-4 text-gray-400 hover:text-white transition-colors"
+          className="absolute right-4 top-4 rounded-full p-1.5 text-zinc-500 transition-colors duration-200 hover:bg-white/[0.06] hover:text-white"
+          aria-label="Close"
         >
-          <X className="h-4 w-4" />
-          <span className="sr-only">Close</span>
+          <X className="size-4" aria-hidden="true" />
         </button>
-        
+
         <div className="flex flex-col gap-4">
-          
-          <div className="flex items-center gap-3">
-            <Lock className="h-6 w-6 text-slate-purple" />
-            <h2 className="text-2xl font-bold text-white">{title}</h2>
+          <div className="flex size-11 items-center justify-center rounded-full border border-accent/25 bg-accent/10">
+            <Lock className="size-5 text-accent" aria-hidden="true" />
           </div>
-          <p className="text-gray-400">
-            {messageLine1}
-          </p>
-          <p className="text-gray-400">
-            {messageLine2}
-          </p>
-          
-          <div className="flex flex-col gap-2 mt-2">
-            <div className="flex gap-3 justify-end">
-              <Button
-                variant="secondary"
-                onClick={onClose}
-                className="bg-dark-400 hover:bg-dark-500 text-white"
-              >
-                Cancel
-              </Button>
-              <Button className="bg-slate-purple hover:bg-cream hover:text-black text-white">
-                Upgrade to Premium
-              </Button>
-            </div>
-            <Link href="/settings/vapi" className="w-full">
-              <Button variant="outline" className="w-full border-blue-500 text-blue-400 hover:bg-blue-500/10">
-                Use My Vapi Key
-              </Button>
+
+          <h2
+            id="limit-modal-title"
+            className="text-xl font-semibold tracking-tight text-white"
+          >
+            {title}
+          </h2>
+
+          <p className="text-sm leading-relaxed text-zinc-400">{messageLine1}</p>
+          <p className="text-sm leading-relaxed text-zinc-400">{messageLine2}</p>
+
+          <div className="mt-2 flex flex-col gap-2.5">
+            <button type="button" className="btn-accent !h-10 w-full text-sm">
+              Upgrade to Premium
+            </button>
+            <Link
+              href="/settings/vapi"
+              className="btn-quiet !h-10 w-full text-sm"
+            >
+              <Settings className="size-4" aria-hidden="true" />
+              Use my Vapi key
             </Link>
           </div>
         </div>

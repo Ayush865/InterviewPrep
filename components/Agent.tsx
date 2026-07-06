@@ -4,13 +4,16 @@ import Image from "next/image";
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Vapi from "@vapi-ai/web";
+import { Phone, PhoneOff, Loader2, X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { vapi } from "@/lib/vapi.sdk";
 import { interviewer } from "@/constants";
-import { createFeedback, getLatestGeneratedInterview } from "@/lib/actions/general.action";
+import {
+  createFeedback,
+  getLatestGeneratedInterview,
+} from "@/lib/actions/general.action";
 import { useVapiAssistant } from "@/hooks/useVapiAssistant";
-import Magnet from "./Magnet";
 import InterviewSuccessModal from "./interview/InterviewSuccessModal";
 
 enum CallStatus {
@@ -25,6 +28,13 @@ interface SavedMessage {
   content: string;
 }
 
+const statusLabel: Record<CallStatus, string> = {
+  [CallStatus.INACTIVE]: "Ready to start",
+  [CallStatus.CONNECTING]: "Connecting…",
+  [CallStatus.ACTIVE]: "Live",
+  [CallStatus.FINISHED]: "Call ended",
+};
+
 const Agent = ({
   userName,
   userId,
@@ -37,88 +47,55 @@ const Agent = ({
   const router = useRouter();
 
   // Use custom assistant if user has linked their API key
-  const { assistantId: customAssistantId, apiKey: customApiKey, isCustom, isLoading: assistantLoading } = useVapiAssistant();
+  const {
+    assistantId: customAssistantId,
+    apiKey: customApiKey,
+    isCustom,
+    isLoading: assistantLoading,
+  } = useVapiAssistant();
 
   const [callStatus, setCallStatus] = useState<CallStatus>(CallStatus.INACTIVE);
   const [messages, setMessages] = useState<SavedMessage[]>([]);
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const [lastMessage, setLastMessage] = useState<string>("");
+  const [lastMessage, setLastMessage] = useState<SavedMessage | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [vapiInstance, setVapiInstance] = useState<any>(null);
+  const [isGeneratingFeedback, setIsGeneratingFeedback] = useState(false);
+  const [vapiInstance, setVapiInstance] = useState<Vapi | null>(null);
   const [generatedInterviewId, setGeneratedInterviewId] = useState<string | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const feedbackGeneratedRef = useRef(false);
   const messagesRef = useRef<SavedMessage[]>([]);
 
-  // Initialize Vapi instance - use custom API key if available, otherwise default
+  // Initialize Vapi instance — user's own API key if linked, default otherwise
   useEffect(() => {
     if (assistantLoading) return;
 
-    let instance;
-
-    if (isCustom && customApiKey) {
-      console.log("🔑 Initializing Vapi with user's custom API key");
-      instance = new Vapi(customApiKey);
-    } else {
-      console.log("🔑 Using default Vapi instance");
-      instance = vapi;
-    }
-
+    const instance = isCustom && customApiKey ? new Vapi(customApiKey) : vapi;
     setVapiInstance(instance);
 
     return () => {
-      // Cleanup: only stop if it's a custom instance we created
+      // Cleanup: only stop custom instances we created here
       if (isCustom && customApiKey && instance) {
         instance.stop();
       }
     };
   }, [isCustom, customApiKey, assistantLoading]);
 
-  // Log VAPI credentials on page load
-  useEffect(() => {
-    if (assistantLoading) return;
-
-    const assistantId = customAssistantId || process.env.NEXT_PUBLIC_VAPI_ASSISTANT_ID;
-    const apiKey = customApiKey || process.env.NEXT_PUBLIC_VAPI_WEB_TOKEN;
-
-    console.log("=== VAPI CREDENTIALS PAGE LOAD ===");
-    console.log("🔑 VAPI CREDENTIALS CHECK:");
-    console.log("  ├─ Using:", isCustom ? "USER'S VAPI CREDENTIALS" : "MASTER/DEFAULT VAPI CREDENTIALS");
-    console.log("  ├─ API Key (Web Token):", apiKey ? `${apiKey.substring(0, 15)}...${apiKey.substring(apiKey.length - 4)}` : "No API key");
-    console.log("  ├─ Full API Key:", apiKey);
-    console.log("  ├─ Assistant ID:", assistantId);
-    console.log("  └─ Is Custom:", isCustom);
-    console.log("");
-    console.log("👤 USER INFO:");
-    console.log("  ├─ User ID:", userId);
-    console.log("  └─ User name:", userName);
-    console.log("");
-    console.log("📍 INTERVIEW INFO:");
-    console.log("  ├─ Interview ID:", interviewId || "N/A (Generate mode)");
-    console.log("  ├─ Type:", type);
-    console.log("  └─ Questions count:", questions?.length || 0);
-    console.log("===================================");
-  }, [assistantLoading, isCustom, customApiKey, customAssistantId, userId, userName, interviewId, type, questions]);
-
   useEffect(() => {
     if (!vapiInstance) return;
+
     const onCallStart = () => {
-      console.log("✅ Call started successfully");
       setCallStatus(CallStatus.ACTIVE);
-      setError(null); // Clear any errors when call starts successfully
+      setError(null);
     };
 
     const onCallEnd = () => {
-      console.log("📞 Call ended");
       setCallStatus(CallStatus.FINISHED);
     };
 
     const onMessage = (message: Message) => {
-      console.log("📩 Message received:", message);
-
       if (message.type === "transcript" && message.transcriptType === "final") {
         const newMessage = { role: message.role, content: message.transcript };
-        console.log("💬 Final transcript:", newMessage);
         setMessages((prev) => {
           const updated = [...prev, newMessage];
           messagesRef.current = updated;
@@ -128,76 +105,42 @@ const Agent = ({
 
       // Capture function call result containing interviewId from generate endpoint
       if (message.type === "function-call-result") {
-        console.log("🔧 Function call result received:", message);
         try {
           const result = (message as any).functionCallResult;
           if (result) {
             const parsed = typeof result === "string" ? JSON.parse(result) : result;
             if (parsed.success && parsed.interviewId) {
-              console.log("✅ Interview generated with ID:", parsed.interviewId);
               setGeneratedInterviewId(parsed.interviewId);
             }
           }
-        } catch (e) {
-          console.log("Could not parse function call result:", e);
+        } catch {
+          // Non-JSON function result — ignore
         }
       }
     };
 
-    const onSpeechStart = () => {
-      console.log("🗣️ Speech start");
-      setIsSpeaking(true);
-    };
-
-    const onSpeechEnd = () => {
-      console.log("🤐 Speech end");
-      setIsSpeaking(false);
-    };
+    const onSpeechStart = () => setIsSpeaking(true);
+    const onSpeechEnd = () => setIsSpeaking(false);
 
     const onError = (error: any) => {
-      console.error("❌ VAPI Error (full object):", error);
-      console.error("VAPI Error Details:", {
-        message: error?.message,
-        type: typeof error,
-        constructor: error?.constructor?.name,
-        keys: error ? Object.keys(error) : [],
-        stringified: JSON.stringify(error, null, 2),
-      });
+      console.error("VAPI error:", error);
 
-      // If it's a Response object, log the details
-      if (error instanceof Response) {
-        console.error("VAPI Response Error:", {
-          status: error.status,
-          statusText: error.statusText,
-          url: error.url,
-        });
-      }
-      
-      // Check for specific error types
-      if (error?.data || error?.error) {
-        console.error("VAPI Error Data:", error.data || error.error);
-      }
-
-      // Check if this is an ejection error (call ended by server)
-      if (error?.message?.includes("ejection") || error?.message?.includes("ended")) {
-        console.error("⚠️ Call was ended by Vapi server (ejection)");
-        console.error("This usually means:");
-        console.error("1. Assistant configuration issue (check Vapi dashboard)");
-        console.error("2. Max duration reached");
-        console.error("3. Silence timeout triggered");
-        console.error("4. Model/API error occurred");
-        
-        setError("The interview ended unexpectedly. This may be due to configuration limits or timeouts. Please check the console for details.");
+      if (
+        error?.message?.includes("ejection") ||
+        error?.message?.includes("ended")
+      ) {
+        setError(
+          "The call ended unexpectedly. This is usually a configuration limit or timeout — please try again."
+        );
       } else {
-        // Set user-friendly error message
-        const errorMessage = error instanceof Response 
-          ? `API Error ${error.status}: ${error.statusText || 'Bad Request'}`
-          : error?.message || "An error occurred during the call. Please try again.";
-        
+        const errorMessage =
+          error instanceof Response
+            ? `API error ${error.status}: ${error.statusText || "Bad Request"}`
+            : error?.message ||
+              "An error occurred during the call. Please try again.";
         setError(errorMessage);
       }
-      
-      // Reset call status on error
+
       setCallStatus(CallStatus.INACTIVE);
     };
 
@@ -220,11 +163,11 @@ const Agent = ({
 
   useEffect(() => {
     if (messages.length > 0) {
-      setLastMessage(messages[messages.length - 1].content);
+      setLastMessage(messages[messages.length - 1]);
     }
 
     const handleGenerateFeedback = async (messages: SavedMessage[]) => {
-      console.log("handleGenerateFeedback");
+      setIsGeneratingFeedback(true);
 
       const { success, feedbackId: id } = await createFeedback({
         interviewId: interviewId!,
@@ -236,7 +179,8 @@ const Agent = ({
       if (success && id) {
         router.push(`/interview/${interviewId}/feedback`);
       } else {
-        console.log("Error saving feedback");
+        setIsGeneratingFeedback(false);
+        setError("We couldn't save your feedback. Redirecting home…");
         router.push("/");
       }
     };
@@ -249,14 +193,11 @@ const Agent = ({
         } else {
           // Fallback: fetch the most recently created interview for this user
           const fetchLatestInterview = async () => {
-            console.log("📥 Fetching latest generated interview for user:", userId);
             const result = await getLatestGeneratedInterview(userId!);
             if (result.success && result.interviewId) {
-              console.log("✅ Found recent interview:", result.interviewId);
               setGeneratedInterviewId(result.interviewId);
               setShowSuccessModal(true);
             } else {
-              console.log("❌ No recent interview found, redirecting to home");
               router.push("/");
             }
           };
@@ -264,7 +205,7 @@ const Agent = ({
         }
       } else if (!feedbackGeneratedRef.current && messages.length > 0) {
         feedbackGeneratedRef.current = true;
-        // Wait 1s for any trailing VAPI transcripts to arrive after call-end, then use latest messages
+        // Wait 1s for any trailing VAPI transcripts to arrive after call-end
         setTimeout(() => handleGenerateFeedback(messagesRef.current), 1000);
       }
     }
@@ -272,85 +213,45 @@ const Agent = ({
 
   const handleCall = async () => {
     setCallStatus(CallStatus.CONNECTING);
-    setError(null); // Clear any previous errors
+    setError(null);
 
     try {
-      // Validate VAPI instance
       if (!vapiInstance) {
-        throw new Error("VAPI instance is not initialized");
+        throw new Error("Voice service is not ready yet. Please try again.");
       }
 
       if (type === "generate") {
-        // Use custom assistant if user has linked their API key, otherwise use default
-        const assistantId = customAssistantId || process.env.NEXT_PUBLIC_VAPI_ASSISTANT_ID;
+        const assistantId =
+          customAssistantId || process.env.NEXT_PUBLIC_VAPI_ASSISTANT_ID;
 
         if (!assistantId) {
-          throw new Error("No assistant ID available. Please configure Vapi in settings.");
+          throw new Error(
+            "No assistant configured. Please set up Vapi in settings."
+          );
         }
 
-        if (!userName || !userId) {
-          throw new Error("Missing user information (userName or userId)");
+        if (!userName || !userId || userId === "NULL" || userId === "null") {
+          throw new Error("User authentication failed. Please sign in again.");
         }
 
-        // Validate userId is not "NULL" string
-        if (userId === "NULL" || userId === "null") {
-          throw new Error("userId is set to NULL - user authentication failed");
-        }
-
-        console.log("=== STARTING VAPI CALL ===");
-        console.log("⚙️ VAPI INSTANCE:");
-        console.log("  ├─ Instance ready:", !!vapiInstance);
-        console.log("  └─ Variable values to pass:", { userid: userId });
-        console.log("==========================");
-
-        // Start assistant and pass userId as a variable so the assistant
-        // can use it in API calls without asking the user
-        const call = await vapiInstance.start(assistantId, {
-          variableValues: {
-            userid: userId, // This passes the actual Clerk user ID
-          },
-        });
-
-        console.log("Call started successfully:", {
-          callId: call?.id,
-          callStatus: call?.status,
-          usingCustomAssistant: isCustom,
-          usingCustomApiKey: isCustom && !!customApiKey,
-          variablesSet: { userid: userId },
-          actualUserId: userId,
-          userIdType: typeof userId,
+        // Pass userId so the assistant can attribute the generated interview
+        await vapiInstance.start(assistantId, {
+          variableValues: { userid: userId },
         });
       } else {
-        let formattedQuestions = "";
-        if (questions) {
-          formattedQuestions = questions
-            .map((question) => `- ${question}`)
-            .join("\n");
-        }
-
-        console.log("Starting VAPI interviewer with:", {
-          questionsCount: questions?.length || 0,
-        });
+        const formattedQuestions = (questions ?? [])
+          .map((question) => `- ${question}`)
+          .join("\n");
 
         await vapiInstance.start(interviewer, {
-          variableValues: {
-            questions: formattedQuestions,
-          },
+          variableValues: { questions: formattedQuestions },
         });
       }
     } catch (error: any) {
-      console.error("Error starting call:", {
-        raw: error,
-        type: typeof error,
-        name: error?.name,
-        message: error?.message,
-        keys: error ? Object.keys(error) : [],
-        toString: String(error),
-      });
-
+      console.error("Error starting call:", error);
       setError(
         error?.message ||
-          "Failed to start the interview. Please verify your Vapi Web Token and Workflow Id belong to the same project and try again."
+          "Failed to start the interview. Please verify your Vapi credentials and try again."
       );
       setCallStatus(CallStatus.INACTIVE);
     }
@@ -358,116 +259,160 @@ const Agent = ({
 
   const handleDisconnect = () => {
     setCallStatus(CallStatus.FINISHED);
-    if (vapiInstance) {
-      vapiInstance.stop();
-    }
+    vapiInstance?.stop();
   };
 
-  return (
-    <>
-      <div className="call-view">
-        {/* AI Interviewer Card */}
-        <div className="card-interviewer">
-          <div className="avatar">
-            <Image
-              src={
-                type === "generate"
-                  ? "/ai-avatar.png"
-                  : "/interviewer-avatar-female.png"
-              }
-              alt="profile-image"
-              fill
-              className="object-cover"
-            />
-            {isSpeaking && <span className="animate-speak" />}
-          </div>
-          <h3>{type === "generate" ? "Hiring Manager" : "AI Interviewer"}</h3>
-        </div>
+  const interviewerName = type === "generate" ? "Hiring Manager" : "AI Interviewer";
+  const isLive = callStatus === CallStatus.ACTIVE;
 
-        {/* User Profile Card */}
-        <div className="card-border">
-          <div className="card-content">
-            <Image
-              src={userImage || "/user-avatar.png"}
-              alt="profile-image"
-              width={539}
-              height={539}
-              className="rounded-full object-cover size-[120px]"
-            />
-            <h3>{userName}</h3>
-          </div>
-        </div>
+  return (
+    <div className="flex w-full flex-col gap-6">
+      {/* Status pill */}
+      <div className="flex justify-center">
+        <span
+          className={cn(
+            "inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-sm font-medium",
+            isLive
+              ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-400"
+              : "border-white/[0.1] bg-white/[0.04] text-zinc-400"
+          )}
+        >
+          <span
+            className={cn(
+              "size-1.5 rounded-full",
+              isLive ? "animate-pulse bg-emerald-400" : "bg-zinc-500"
+            )}
+            aria-hidden="true"
+          />
+          {statusLabel[callStatus]}
+        </span>
       </div>
 
-      {messages.length > 0 && (
-        <div className="transcript-border">
-          <div className="transcript">
-            <p
-              key={lastMessage}
+      {/* Participants */}
+      <div className="grid grid-cols-2 gap-4 max-sm:grid-cols-1">
+        {/* AI interviewer */}
+        <div className="panel flex flex-col items-center justify-center gap-4 px-6 py-12">
+          <div className="relative">
+            <div
               className={cn(
-                "transition-opacity duration-500 opacity-0",
-                "animate-fadeIn opacity-100"
+                "absolute -inset-2 rounded-full border-2 border-accent/60 transition-opacity duration-300",
+                isSpeaking ? "animate-pulse opacity-100" : "opacity-0"
               )}
-            >
-              {lastMessage}
+              aria-hidden="true"
+            />
+            <div className="relative size-24 overflow-hidden rounded-full border border-white/[0.12]">
+              <Image
+                src={
+                  type === "generate"
+                    ? "/ai-avatar.png"
+                    : "/interviewer-avatar-female.png"
+                }
+                alt={interviewerName}
+                fill
+                className="object-cover"
+              />
+            </div>
+          </div>
+          <div className="text-center">
+            <p className="font-medium text-white">{interviewerName}</p>
+            <p className="mt-0.5 text-sm text-zinc-500">
+              {isSpeaking ? "Speaking…" : "Hired Fox AI"}
             </p>
           </div>
         </div>
-      )}
 
-      {error && (
-        <div className="w-full flex justify-center mb-4">
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded max-w-md text-center">
-            <strong className="font-bold">Error: </strong>
-            <span className="block sm:inline">{error}</span>
-            <button
-              onClick={() => setError(null)}
-              className="ml-2 text-red-700 hover:text-red-900 underline"
-            >
-              Dismiss
-            </button>
+        {/* User */}
+        <div className="panel flex flex-col items-center justify-center gap-4 px-6 py-12">
+          <div className="relative size-24 overflow-hidden rounded-full border border-white/[0.12]">
+            <Image
+              src={userImage || "/user-avatar.png"}
+              alt={userName || "You"}
+              fill
+              className="object-cover"
+            />
           </div>
+          <div className="text-center">
+            <p className="font-medium text-white">{userName}</p>
+            <p className="mt-0.5 text-sm text-zinc-500">You</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Live transcript */}
+      {lastMessage && (
+        <div className="panel px-6 py-5" aria-live="polite">
+          <p className="text-xs font-medium uppercase tracking-wider text-zinc-500">
+            {lastMessage.role === "assistant" ? interviewerName : userName}
+          </p>
+          <p
+            key={lastMessage.content}
+            className="animate-fadeIn mt-2 text-[15px] leading-relaxed text-zinc-200"
+          >
+            {lastMessage.content}
+          </p>
         </div>
       )}
 
-      <div className="w-full flex justify-center">
-        {callStatus !== "ACTIVE" ? (
-          <button className="relative btn-call" onClick={() => handleCall()}>
-            {callStatus === "CONNECTING" ? (
-              <div className="flex items-center justify-center gap-2">
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                <span>Connecting...</span>
-              </div>
+      {/* Error banner */}
+      {error && (
+        <div
+          role="alert"
+          className="flex items-start justify-between gap-4 rounded-xl border border-red-500/25 bg-red-500/10 px-5 py-4"
+        >
+          <p className="text-sm leading-relaxed text-red-300">{error}</p>
+          <button
+            onClick={() => setError(null)}
+            className="shrink-0 rounded-full p-1 text-red-300 transition-colors duration-200 hover:bg-red-500/20 hover:text-white"
+            aria-label="Dismiss error"
+          >
+            <X className="size-4" aria-hidden="true" />
+          </button>
+        </div>
+      )}
+
+      {/* Call controls */}
+      <div className="flex flex-col items-center gap-3">
+        {isGeneratingFeedback ? (
+          <div className="flex items-center gap-2 text-zinc-400">
+            <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+            <span className="text-sm">Analyzing your interview…</span>
+          </div>
+        ) : !isLive ? (
+          <button
+            className="btn-accent h-12 min-w-44"
+            onClick={handleCall}
+            disabled={callStatus === CallStatus.CONNECTING}
+          >
+            {callStatus === CallStatus.CONNECTING ? (
+              <>
+                <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                Connecting…
+              </>
             ) : (
-              <div className="flex items-center justify-center gap-2">
-                <Image
-                  src="/call.svg"
-                  alt="call"
-                  width={20}
-                  height={20}
-                  className="object-contain"
-                />
-                <span>Start Call</span>
-              </div>
+              <>
+                <Phone className="size-4" aria-hidden="true" />
+                Start call
+              </>
             )}
           </button>
         ) : (
-          <button className="btn-disconnect" onClick={() => handleDisconnect()}>
-            <div className="flex items-center justify-center gap-2">
-              <Image
-                src="/call_end.svg"
-                alt="end call"
-                width={20}
-                height={20}
-                className="object-contain"
-              />
-              <span>End Call</span>
-            </div>
+          <button
+            className="inline-flex h-12 min-w-44 cursor-pointer items-center justify-center gap-2 rounded-full bg-red-600 px-6 text-[15px] font-medium text-white transition-colors duration-200 hover:bg-red-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-500"
+            onClick={handleDisconnect}
+          >
+            <PhoneOff className="size-4" aria-hidden="true" />
+            End call
           </button>
+        )}
+
+        {callStatus === CallStatus.INACTIVE && !error && (
+          <p className="text-sm text-zinc-500">
+            Make sure your microphone is enabled.
+          </p>
         )}
       </div>
 
-      {/* Success Modal for VAPI-generated interviews */}
+      {/* Success modal for VAPI-generated interviews */}
       <InterviewSuccessModal
         isOpen={showSuccessModal}
         onClose={() => {
@@ -477,7 +422,7 @@ const Agent = ({
           }
         }}
       />
-    </>
+    </div>
   );
 };
 

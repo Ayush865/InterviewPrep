@@ -1,92 +1,119 @@
 import Image from "next/image";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { currentUser } from "@clerk/nextjs/server";
+import { Settings, Sparkles } from "lucide-react";
 
 import Agent from "@/components/Agent";
-import { getRandomInterviewCover } from "@/lib/utils";
-
+import DisplayTechIcons from "@/components/DisplayTechIcons";
 import {
   getFeedbackByInterviewId,
   getInterviewById,
 } from "@/lib/actions/general.action";
-import DisplayTechIcons from "@/components/DisplayTechIcons";
+import {
+  getUserFeedbackCount,
+  getUserPremiumStatus,
+} from "@/lib/actions/premium.action";
+import { hasUserVapiCredentials } from "@/lib/actions/vapi.action";
 
 const InterviewDetails = async ({ params }: RouteParams) => {
   const { id } = await params;
 
   const clerkUser = await currentUser();
+  if (!clerkUser?.id) redirect("/sign-in");
 
   const interview = await getInterviewById(id);
   if (!interview) redirect("/");
 
-  const feedback = await getFeedbackByInterviewId({
-    interviewId: id,
-    userId: clerkUser?.id!,
-  });
+  const [feedback, isPremium, feedbackCount, hasVapiCredentials] =
+    await Promise.all([
+      getFeedbackByInterviewId({ interviewId: id, userId: clerkUser.id }),
+      getUserPremiumStatus(clerkUser.id),
+      getUserFeedbackCount(clerkUser.id),
+      hasUserVapiCredentials(clerkUser.id),
+    ]);
 
-  const { getUserFeedbackCount, getUserPremiumStatus } = await import("@/lib/actions/premium.action");
-  const { hasUserVapiCredentials } = await import("@/lib/actions/vapi.action");
-  const [isPremium, feedbackCount, hasVapiCredentials] = await Promise.all([
-    getUserPremiumStatus(clerkUser?.id!),
-    getUserFeedbackCount(clerkUser?.id!),
-    hasUserVapiCredentials(clerkUser?.id!),
-  ]);
-
-  const limitReached = !isPremium && !hasVapiCredentials && feedbackCount >= 1;
+  const limitReached =
+    !isPremium && !hasVapiCredentials && feedbackCount >= 1 && !feedback;
 
   if (limitReached) {
     return (
-      <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
-        <h2 className="text-2xl font-bold text-white">Free Plan Limit Reached</h2>
-        <p className="text-gray-400 text-center max-w-md">
-          You have already taken 1 interview. Upgrade to Premium to take unlimited interviews.
-        </p>
-        <div className="flex gap-4">
-            <a href="/" className="px-4 py-2 bg-dark-300 rounded-lg text-white hover:bg-dark-400 transition-colors">
-              Go Home
-            </a>
-            {/* Placeholder for upgrade button */}
-            <button className="px-4 py-2 bg-slate-purple rounded-lg text-white hover:bg-orange transition-colors">
+      <div className="flex min-h-[60vh] items-center justify-center py-16">
+        <div className="panel flex max-w-lg flex-col items-center gap-6 px-10 py-12 text-center">
+          <div className="flex size-12 items-center justify-center rounded-full border border-accent/25 bg-accent/10">
+            <Sparkles className="size-5 text-accent" aria-hidden="true" />
+          </div>
+          <div>
+            <h2 className="display text-2xl">Free plan limit reached</h2>
+            <p className="mt-3 leading-relaxed text-zinc-400">
+              You&apos;ve taken your free interview. Connect your own Vapi key
+              or upgrade to Premium for unlimited interviews.
+            </p>
+          </div>
+          <div className="flex w-full flex-col gap-3 sm:flex-row sm:justify-center">
+            <Link href="/settings/vapi" className="btn-quiet !h-10 text-sm">
+              <Settings className="size-4" aria-hidden="true" />
+              Use my Vapi key
+            </Link>
+            <button type="button" className="btn-accent !h-10 text-sm">
               Upgrade to Premium
             </button>
+          </div>
+          <Link
+            href="/"
+            className="text-sm text-zinc-500 transition-colors duration-200 hover:text-white"
+          >
+            Back to dashboard
+          </Link>
         </div>
       </div>
     );
   }
 
   return (
-    <>
-      <div className="flex flex-row gap-4 justify-between">
-        <div className="flex flex-row gap-4 items-center max-sm:flex-col">
-          <div className="flex flex-row gap-4 items-center">
+    <div className="mx-auto w-full max-w-3xl pb-24 pt-12 max-sm:pt-8">
+      {/* Interview header */}
+      <header className="panel flex items-center justify-between gap-4 p-5 max-sm:flex-col max-sm:items-start">
+        <div className="flex items-center gap-4">
+          <div className="flex size-12 shrink-0 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.04] p-2">
             <Image
               src={interview.coverImage || "/covers/Amazon.svg"}
-              alt="cover-image"
+              alt=""
               width={40}
               height={40}
-              className="object-cover size-[40px]"
+              className="size-8 object-contain"
             />
-            <h3 className="capitalize">{interview.role} Interview</h3>
           </div>
-
-          <DisplayTechIcons techStack={interview.techstack} />
+          <div>
+            <h1 className="text-lg font-semibold capitalize tracking-tight text-white">
+              {interview.role} Interview
+            </h1>
+            <p className="text-sm capitalize text-zinc-500">
+              {interview.level} · {interview.questions.length} questions
+            </p>
+          </div>
         </div>
 
-        <p className="bg-cream text-black font-semibold px-4 py-2 rounded-lg h-fit">
-          {interview.type}
-        </p>
-      </div>
+        <div className="flex items-center gap-3">
+          <DisplayTechIcons techStack={interview.techstack} />
+          <span className="inline-flex items-center rounded-full border border-white/[0.1] bg-white/[0.04] px-3 py-1 text-xs font-medium capitalize text-zinc-300">
+            {interview.type}
+          </span>
+        </div>
+      </header>
 
-      <Agent
-        userName={clerkUser?.firstName || clerkUser?.username || "User"}
-        userId={clerkUser?.id}
-        userImage={clerkUser?.imageUrl}
-        interviewId={id}
-        type="interview"
-        questions={interview.questions}
-        feedbackId={feedback?.id}
-      />
-    </>
+      <div className="mt-8">
+        <Agent
+          userName={clerkUser.firstName || clerkUser.username || "User"}
+          userId={clerkUser.id}
+          userImage={clerkUser.imageUrl}
+          interviewId={id}
+          type="interview"
+          questions={interview.questions}
+          feedbackId={feedback?.id}
+        />
+      </div>
+    </div>
   );
 };
 
