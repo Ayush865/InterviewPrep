@@ -174,21 +174,50 @@ const Agent = ({
     }
 
     const handleGenerateFeedback = async (messages: SavedMessage[]) => {
+      const userMessages = messages.filter((m) => m.role === "user");
+      const userChars = userMessages.reduce(
+        (sum, m) => sum + m.content.trim().length,
+        0
+      );
+
+      console.info("[Agent] Call finished, evaluating transcript", {
+        interviewId,
+        totalMessages: messages.length,
+        userMessages: userMessages.length,
+        userChars,
+      });
+
+      // Don't request a score for an interview the candidate never answered —
+      // the server also rejects this, but catching it here gives instant UX.
+      if (userMessages.length === 0 || userChars < 20) {
+        console.warn("[Agent] Feedback skipped: no candidate answers detected");
+        feedbackGeneratedRef.current = false; // allow another attempt
+        setError(
+          "We didn't hear any answers from you, so no feedback was generated. Start the call again and answer out loud."
+        );
+        return;
+      }
+
       setIsGeneratingFeedback(true);
 
-      const { success, feedbackId: id } = await createFeedback({
+      const result = await createFeedback({
         interviewId: interviewId!,
         userId: userId!,
         transcript: messages,
         feedbackId,
       });
 
-      if (success && id) {
+      if (result.success && result.feedbackId) {
         router.push(`/interview/${interviewId}/feedback`);
       } else {
+        console.error("[Agent] Feedback generation failed", result);
         setIsGeneratingFeedback(false);
-        setError("We couldn't save your feedback. Redirecting home…");
-        router.push("/");
+        feedbackGeneratedRef.current = false; // allow another attempt
+        setError(
+          "reason" in result && result.reason === "no_user_responses"
+            ? "We didn't hear any answers from you, so no feedback was generated. Start the call again and answer out loud."
+            : "We couldn't generate your feedback. Please try the interview again."
+        );
       }
     };
 
@@ -221,6 +250,12 @@ const Agent = ({
   const handleCall = async () => {
     setCallStatus(CallStatus.CONNECTING);
     setError(null);
+
+    // Fresh transcript per attempt — a retry after a silent call must not
+    // inherit the previous call's messages
+    setMessages([]);
+    messagesRef.current = [];
+    setLastMessage(null);
 
     try {
       if (!vapiInstance) {

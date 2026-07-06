@@ -35,6 +35,9 @@ function mapInterview(interview: InterviewRow): Interview {
   } as Interview;
 }
 
+/** Minimum characters of candidate speech required to score an interview */
+const MIN_USER_RESPONSE_CHARS = 20;
+
 /**
  * Create feedback for an interview using AI analysis
  * This replaces the Firebase version with MySQL
@@ -43,6 +46,35 @@ export async function createFeedback(params: CreateFeedbackParams) {
   const { interviewId, userId, transcript, feedbackId } = params;
 
   try {
+    // Transcript stats — the single most useful signal when debugging
+    // "why did a silent candidate get scored"
+    const userMessages = transcript.filter((m) => m.role === "user");
+    const assistantMessages = transcript.filter((m) => m.role === "assistant");
+    const userChars = userMessages.reduce(
+      (sum, m) => sum + m.content.trim().length,
+      0
+    );
+
+    logger.info(`[Feedback] Generation requested`, {
+      interviewId,
+      userId,
+      totalMessages: transcript.length,
+      assistantMessages: assistantMessages.length,
+      userMessages: userMessages.length,
+      userChars,
+    });
+
+    // Guard: don't score an interview the candidate never answered.
+    // Without this, the transcript contains only the interviewer's speech
+    // and the LLM hallucinates a plausible mid-range score.
+    if (userMessages.length === 0 || userChars < MIN_USER_RESPONSE_CHARS) {
+      logger.warn(
+        `[Feedback] Skipped: insufficient candidate responses for interview ${interviewId}`,
+        { userMessages: userMessages.length, userChars }
+      );
+      return { success: false, reason: "no_user_responses" as const };
+    }
+
     const formattedTranscript = transcript
       .map(
         (sentence: { role: string; content: string }) =>
@@ -50,9 +82,8 @@ export async function createFeedback(params: CreateFeedbackParams) {
       )
       .join("");
 
-    logger.info(`[Feedback] Generating feedback for interview ${interviewId}`);
-
     // Generate feedback using NVIDIA NIM (meta/llama-3.1-8b-instruct)
+    const nvidiaStartedAt = Date.now();
     const nvidiaResponse = await fetch("https://integrate.api.nvidia.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -69,6 +100,8 @@ export async function createFeedback(params: CreateFeedbackParams) {
           {
             role: "user",
             content: `You are an AI interviewer analyzing a mock interview. Evaluate the candidate based on structured categories. Be thorough and detailed. Don't be lenient — point out mistakes and areas for improvement.
+
+Score ONLY what the candidate ("user" lines) actually said. If the candidate did not answer a question, answered very briefly, or gave off-topic answers, the relevant scores MUST be very low (0-15). Never invent answers the candidate did not give.
 
 Transcript:
 ${formattedTranscript}
@@ -95,7 +128,12 @@ Score the candidate from 0 to 100 in each area and return ONLY this JSON structu
     });
 
     if (!nvidiaResponse.ok) {
-      throw new Error(`NVIDIA API error: ${await nvidiaResponse.text()}`);
+      const errorBody = await nvidiaResponse.text();
+      logger.error(`[Feedback] NVIDIA API error for interview ${interviewId}`, {
+        status: nvidiaResponse.status,
+        body: errorBody.slice(0, 500),
+      });
+      throw new Error(`NVIDIA API error: ${errorBody}`);
     }
 
     const nvidiaData = await nvidiaResponse.json();
@@ -106,6 +144,15 @@ Score the candidate from 0 to 100 in each area and return ONLY this JSON structu
       .replace(/```\s*$/i, "")
       .trim();
     const object = feedbackSchema.parse(JSON.parse(cleaned));
+
+    logger.info(`[Feedback] Model scored interview ${interviewId}`, {
+      latencyMs: Date.now() - nvidiaStartedAt,
+      totalScore: object.totalScore,
+      categoryScores: object.categoryScores.map((c) => ({
+        name: c.name,
+        score: c.score,
+      })),
+    });
 
     // Save feedback to MySQL
     const feedback = await createFeedbackInDB({
@@ -123,8 +170,8 @@ Score the candidate from 0 to 100 in each area and return ONLY this JSON structu
 
     return { success: true, feedbackId: feedback.id };
   } catch (error) {
-    logger.error("[Feedback] Error saving feedback:", error);
-    return { success: false };
+    logger.error(`[Feedback] Error generating feedback for interview ${interviewId}:`, error);
+    return { success: false, reason: "generation_failed" as const };
   }
 }
 
