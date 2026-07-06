@@ -2,8 +2,9 @@
 
 import { createPortal } from "react-dom";
 import { useEffect, useState } from "react";
-import { X, Lock, Settings } from "lucide-react";
+import { X, Lock, Settings, Sparkles, Check } from "lucide-react";
 import Link from "next/link";
+import { motion, AnimatePresence } from "motion/react";
 
 interface LimitReachedModalProps {
   isOpen: boolean;
@@ -13,10 +14,16 @@ interface LimitReachedModalProps {
   messageLine2: string;
 }
 
+const premiumPerks = [
+  "Unlimited interview generations",
+  "Unlimited practice interviews",
+  "Priority AI feedback",
+];
+
 const LimitReachedModal = ({
   isOpen,
   onClose,
-  title = "Limit reached",
+  title = "You've hit the free limit",
   messageLine1,
   messageLine2,
 }: LimitReachedModalProps) => {
@@ -35,58 +42,102 @@ const LimitReachedModal = ({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [isOpen, onClose]);
 
-  if (!mounted || !isOpen) return null;
+  if (!mounted) return null;
 
   return createPortal(
-    <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
-      onClick={onClose}
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="limit-modal-title"
-        onClick={(e) => e.stopPropagation()}
-        className="animate-in fade-in zoom-in-95 relative w-full max-w-md rounded-2xl border border-white/[0.1] bg-surface-overlay p-7 shadow-2xl duration-200"
-      >
-        <button
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
           onClick={onClose}
-          className="absolute right-4 top-4 rounded-full p-1.5 text-zinc-500 transition-colors duration-200 hover:bg-white/[0.06] hover:text-white"
-          aria-label="Close"
         >
-          <X className="size-4" aria-hidden="true" />
-        </button>
-
-        <div className="flex flex-col gap-4">
-          <div className="flex size-11 items-center justify-center rounded-full border border-accent/25 bg-accent/10">
-            <Lock className="size-5 text-accent" aria-hidden="true" />
-          </div>
-
-          <h2
-            id="limit-modal-title"
-            className="text-xl font-semibold tracking-tight text-white"
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: 12 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.97, y: 8 }}
+            transition={{ type: "spring", stiffness: 380, damping: 30 }}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="limit-modal-title"
+            onClick={(e) => e.stopPropagation()}
+            className="relative w-full max-w-md overflow-hidden rounded-2xl border border-hairline bg-surface-overlay shadow-2xl"
           >
-            {title}
-          </h2>
+            {/* Soft accent glow */}
+            <div
+              className="pointer-events-none absolute inset-x-0 top-0 h-32"
+              style={{
+                background:
+                  "radial-gradient(320px 120px at 50% 0%, rgba(237,91,35,0.12), transparent 70%)",
+              }}
+              aria-hidden="true"
+            />
 
-          <p className="text-sm leading-relaxed text-zinc-400">{messageLine1}</p>
-          <p className="text-sm leading-relaxed text-zinc-400">{messageLine2}</p>
-
-          <div className="mt-2 flex flex-col gap-2.5">
-            <button type="button" className="btn-accent !h-10 w-full text-sm">
-              Upgrade to Premium
-            </button>
-            <Link
-              href="/settings/vapi"
-              className="btn-quiet !h-10 w-full text-sm"
+            <button
+              onClick={onClose}
+              className="absolute right-4 top-4 z-10 cursor-pointer rounded-full p-1.5 text-faint transition-colors duration-200 hover:bg-hover hover:text-strong"
+              aria-label="Close"
             >
-              <Settings className="size-4" aria-hidden="true" />
-              Use my Vapi key
-            </Link>
-          </div>
-        </div>
-      </div>
-    </div>,
+              <X className="size-4" aria-hidden="true" />
+            </button>
+
+            <div className="relative flex flex-col gap-5 p-7">
+              <div className="flex size-12 items-center justify-center rounded-full border border-accent/25 bg-accent/10">
+                <Lock className="size-5 text-accent" aria-hidden="true" />
+              </div>
+
+              <div>
+                <h2
+                  id="limit-modal-title"
+                  className="text-xl font-semibold tracking-tight text-strong"
+                >
+                  {title}
+                </h2>
+                <p className="mt-2 text-sm leading-relaxed text-soft">
+                  {messageLine1}
+                </p>
+                <p className="mt-1.5 text-sm leading-relaxed text-soft">
+                  {messageLine2}
+                </p>
+              </div>
+
+              {/* Premium perks */}
+              <ul className="flex list-none flex-col gap-2 rounded-xl border border-hairline bg-raise p-4">
+                {premiumPerks.map((perk) => (
+                  <li
+                    key={perk}
+                    className="flex items-center gap-2.5 text-sm text-body"
+                  >
+                    <Check
+                      className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400"
+                      aria-hidden="true"
+                    />
+                    {perk}
+                  </li>
+                ))}
+              </ul>
+
+              <div className="flex flex-col gap-2.5">
+                <button type="button" className="btn-accent !h-11 w-full text-sm">
+                  <Sparkles className="size-4" aria-hidden="true" />
+                  Upgrade to Premium
+                </button>
+                <Link
+                  href="/settings/vapi"
+                  className="btn-quiet !h-11 w-full text-sm"
+                >
+                  <Settings className="size-4" aria-hidden="true" />
+                  Use my own Vapi key
+                </Link>
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>,
     document.body
   );
 };

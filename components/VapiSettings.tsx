@@ -4,14 +4,28 @@
  * UI component for users to link their Vapi API key and clone resources.
  */
 
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useUser } from '@clerk/nextjs';
-import { useRouter } from 'next/navigation';
-import { LinkPreview } from './ui/link-preview';
-import { saveUserVapiCredentials, getUserVapiCredentials, deleteUserVapiCredentials } from '@/lib/actions/vapi.action';
-import { CheckCircle, Settings, ArrowRight, Trash2 } from 'lucide-react';
+import { useState, useEffect } from "react";
+import { useUser } from "@clerk/nextjs";
+import { useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "motion/react";
+import { LinkPreview } from "./ui/link-preview";
+import {
+  saveUserVapiCredentials,
+  getUserVapiCredentials,
+  deleteUserVapiCredentials,
+} from "@/lib/actions/vapi.action";
+import {
+  CheckCircle2,
+  Settings,
+  ArrowRight,
+  ArrowLeft,
+  Trash2,
+  Loader2,
+  KeyRound,
+  ShieldCheck,
+} from "lucide-react";
 
 interface CloneResult {
   assistantId: string;
@@ -24,17 +38,20 @@ interface ExistingCredentials {
   toolId: string | null;
 }
 
+const maskId = (id: string) => `${id.slice(0, 8)}…${id.slice(-4)}`;
+
 export function VapiSettings() {
   const { user, isLoaded } = useUser();
   const router = useRouter();
-  const [apiKey, setApiKey] = useState('');
-  const [webToken, setWebToken] = useState('');
+  const [apiKey, setApiKey] = useState("");
+  const [webToken, setWebToken] = useState("");
   const [loading, setLoading] = useState(false);
   const [checkingCredentials, setCheckingCredentials] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [cloneResult, setCloneResult] = useState<CloneResult | null>(null);
-  const [existingCredentials, setExistingCredentials] = useState<ExistingCredentials | null>(null);
+  const [existingCredentials, setExistingCredentials] =
+    useState<ExistingCredentials | null>(null);
   const [showReconfigure, setShowReconfigure] = useState(false);
 
   // Check for existing credentials on mount
@@ -54,7 +71,7 @@ export function VapiSettings() {
           });
         }
       } catch (err) {
-        console.error('Error checking credentials:', err);
+        console.error("Error checking credentials:", err);
       } finally {
         setCheckingCredentials(false);
       }
@@ -66,7 +83,11 @@ export function VapiSettings() {
   const handleDeleteCredentials = async () => {
     if (!user?.id) return;
 
-    if (!confirm('Are you sure you want to delete your VAPI credentials? You will need to reconfigure them to use voice calls.')) {
+    if (
+      !confirm(
+        "Are you sure you want to delete your VAPI credentials? You will need to reconfigure them to use voice calls."
+      )
+    ) {
       return;
     }
 
@@ -76,19 +97,18 @@ export function VapiSettings() {
     try {
       const result = await deleteUserVapiCredentials(user.id);
       if (result.success) {
-        // Clear localStorage as well
-        localStorage.removeItem('vapi_assistant_id');
-        localStorage.removeItem('vapi_tool_id');
-        localStorage.removeItem('vapi_web_token');
-        localStorage.removeItem('vapi_user_id');
+        localStorage.removeItem("vapi_assistant_id");
+        localStorage.removeItem("vapi_tool_id");
+        localStorage.removeItem("vapi_web_token");
+        localStorage.removeItem("vapi_user_id");
 
         setExistingCredentials(null);
-        setSuccess('Credentials deleted successfully');
+        setSuccess("Credentials deleted successfully");
       } else {
-        setError(result.error || 'Failed to delete credentials');
+        setError(result.error || "Failed to delete credentials");
       }
     } catch (err: any) {
-      setError(err.message || 'An error occurred');
+      setError(err.message || "An error occurred");
     } finally {
       setLoading(false);
     }
@@ -96,17 +116,17 @@ export function VapiSettings() {
 
   const handleLinkAndClone = async () => {
     if (!user) {
-      setError('Please sign in first');
+      setError("Please sign in first");
       return;
     }
 
     if (!apiKey.trim()) {
-      setError('Please enter your Vapi Private API key');
+      setError("Please enter your Vapi Private API key");
       return;
     }
 
     if (!webToken.trim()) {
-      setError('Please enter your Vapi Public Web Token');
+      setError("Please enter your Vapi Public Web Token");
       return;
     }
 
@@ -116,10 +136,9 @@ export function VapiSettings() {
 
     try {
       // Step 1: Link the API key
-      console.log('Linking Vapi API key...');
-      const linkResponse = await fetch('/api/vapi/link', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const linkResponse = await fetch("/api/vapi/link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userId: user.id,
           apiKey: apiKey.trim(),
@@ -128,17 +147,13 @@ export function VapiSettings() {
 
       if (!linkResponse.ok) {
         const linkError = await linkResponse.json();
-        throw new Error(linkError.error || 'Failed to link API key');
+        throw new Error(linkError.error || "Failed to link API key");
       }
 
-      const linkData = await linkResponse.json();
-      console.log('API key linked:', linkData);
-
       // Step 2: Clone assistant and tool
-      console.log('Cloning assistant and tool...');
-      const cloneResponse = await fetch('/api/vapi/clone', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const cloneResponse = await fetch("/api/vapi/clone", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userId: user.id,
         }),
@@ -146,14 +161,12 @@ export function VapiSettings() {
 
       if (!cloneResponse.ok) {
         const cloneError = await cloneResponse.json();
-        throw new Error(cloneError.error || 'Failed to clone resources');
+        throw new Error(cloneError.error || "Failed to clone resources");
       }
 
       const cloneData: CloneResult = await cloneResponse.json();
-      console.log('Clone result:', cloneData);
 
-      // Step 3: Save to database (Firebase)
-      console.log('Saving credentials to database...');
+      // Step 3: Save credentials
       const dbResult = await saveUserVapiCredentials(user.id, {
         webToken: webToken.trim(),
         assistantId: cloneData.assistantId,
@@ -161,349 +174,349 @@ export function VapiSettings() {
       });
 
       if (!dbResult.success) {
-        console.error('Failed to save to database:', dbResult.error);
-        throw new Error(dbResult.error || 'Failed to save credentials to database');
+        throw new Error(
+          dbResult.error || "Failed to save credentials to database"
+        );
       }
 
-      console.log('✅ Credentials saved to database successfully');
-
       // Save to localStorage for quick access (fallback)
-      localStorage.setItem('vapi_assistant_id', cloneData.assistantId);
-      localStorage.setItem('vapi_tool_id', cloneData.toolId);
-      localStorage.setItem('vapi_web_token', webToken.trim()); // Use web token for SDK calls
-      localStorage.setItem('vapi_user_id', user.id); // Store user ID to prevent cross-user data access
+      localStorage.setItem("vapi_assistant_id", cloneData.assistantId);
+      localStorage.setItem("vapi_tool_id", cloneData.toolId);
+      localStorage.setItem("vapi_web_token", webToken.trim());
+      localStorage.setItem("vapi_user_id", user.id);
 
       setCloneResult(cloneData);
-      setSuccess(
-        `Successfully cloned and saved! Your personal assistant ID: ${cloneData.assistantId}`
-      );
-      setApiKey(''); // Clear the inputs for security
-      setWebToken('');
+      setSuccess("Your personal assistant is ready to use.");
+      setApiKey(""); // Clear the inputs for security
+      setWebToken("");
 
-      // Update existing credentials state to show the connected view
       setExistingCredentials({
         assistantId: cloneData.assistantId,
         toolId: cloneData.toolId,
       });
       setShowReconfigure(false);
-
     } catch (err: any) {
-      console.error('Error:', err);
-      setError(err.message || 'An error occurred');
+      console.error("Error linking Vapi:", err);
+      setError(err.message || "An error occurred");
     } finally {
       setLoading(false);
     }
   };
 
-  // Show loading state while checking credentials
+  const feedbackBanners = (
+    <AnimatePresence>
+      {error && (
+        <motion.div
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0 }}
+          role="alert"
+          className="rounded-xl border border-red-500/25 bg-red-500/10 px-4 py-3"
+        >
+          <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
+        </motion.div>
+      )}
+      {success && (
+        <motion.div
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0 }}
+          role="status"
+          className="rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-4 py-3"
+        >
+          <p className="text-sm text-emerald-700 dark:text-emerald-300">
+            {success}
+          </p>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+
+  // Loading state
   if (checkingCredentials) {
     return (
-      <div className="max-w-2xl mx-auto p-6">
-        <div className="bg-white/5 backdrop-blur-lg rounded-2xl shadow-2xl p-8 border border-white/10 flex items-center justify-center">
-          <div className="flex items-center gap-3 text-gray-300">
-            <svg
-              className="animate-spin h-5 w-5"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-              />
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              />
-            </svg>
-            Checking your configuration...
-          </div>
+      <div
+        className="panel flex items-center justify-center px-8 py-16"
+        role="status"
+        aria-label="Checking your configuration"
+      >
+        <div className="flex items-center gap-3 text-soft">
+          <Loader2 className="size-5 animate-spin" aria-hidden="true" />
+          <span className="text-sm">Checking your configuration…</span>
         </div>
       </div>
     );
   }
 
-  // Show connected state for users with existing credentials
+  // Connected state
   if (existingCredentials && !showReconfigure) {
     return (
-      <div className="max-w-2xl mx-auto p-6 space-y-6">
-        {/* Connected Status Card */}
-        <div className="bg-gradient-to-br from-green-500/10 to-emerald-500/5 backdrop-blur-lg rounded-2xl shadow-2xl p-8 border border-green-500/30">
-          <div className="flex items-center gap-4 mb-6">
-            <div className="p-3 rounded-full bg-green-500/20">
-              <CheckCircle className="h-8 w-8 text-green-400" />
+      <div className="flex flex-col gap-4">
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35 }}
+          className="panel p-7"
+        >
+          <div className="flex items-center gap-4">
+            <div className="flex size-12 shrink-0 items-center justify-center rounded-full border border-emerald-500/25 bg-emerald-500/10">
+              <ShieldCheck
+                className="size-5 text-emerald-600 dark:text-emerald-400"
+                aria-hidden="true"
+              />
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-white">Vapi Connected</h2>
-              <p className="text-green-300">Your API key is linked and ready to use</p>
+              <h2 className="text-lg font-semibold tracking-tight text-strong">
+                Vapi connected
+              </h2>
+              <p className="text-sm text-soft">
+                Your API key is linked and ready to use.
+              </p>
             </div>
           </div>
 
-          {/* Credentials Info */}
-          <div className="bg-white/5 rounded-xl p-5 mb-6 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-gray-400 text-sm">Assistant ID</span>
-              <code className="bg-white/10 px-3 py-1 rounded text-green-300 font-mono text-sm">
-                {existingCredentials.assistantId.slice(0, 8)}...{existingCredentials.assistantId.slice(-4)}
-              </code>
+          {/* Credential rows */}
+          <dl className="mt-6 flex flex-col gap-2 rounded-xl border border-hairline bg-raise p-4">
+            <div className="flex items-center justify-between gap-4">
+              <dt className="text-sm text-faint">Assistant ID</dt>
+              <dd>
+                <code className="rounded-md border border-hairline bg-raise px-2.5 py-1 font-mono text-xs text-body">
+                  {maskId(existingCredentials.assistantId)}
+                </code>
+              </dd>
             </div>
             {existingCredentials.toolId && (
-              <div className="flex items-center justify-between">
-                <span className="text-gray-400 text-sm">Tool ID</span>
-                <code className="bg-white/10 px-3 py-1 rounded text-green-300 font-mono text-sm">
-                  {existingCredentials.toolId.slice(0, 8)}...{existingCredentials.toolId.slice(-4)}
-                </code>
+              <div className="flex items-center justify-between gap-4">
+                <dt className="text-sm text-faint">Tool ID</dt>
+                <dd>
+                  <code className="rounded-md border border-hairline bg-raise px-2.5 py-1 font-mono text-xs text-body">
+                    {maskId(existingCredentials.toolId)}
+                  </code>
+                </dd>
               </div>
             )}
-          </div>
+          </dl>
 
-          {/* Action Buttons */}
-          <div className="flex flex-col sm:flex-row gap-3">
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row">
             <button
-              onClick={() => router.push('/interview')}
-              className="flex-1 px-6 py-4 bg-orange text-white rounded-lg hover:bg-orange/90 transition-all font-semibold text-lg shadow-lg hover:shadow-orange/50 flex items-center justify-center gap-2"
+              onClick={() => router.push("/interview")}
+              className="btn-accent flex-1"
             >
-              Generate Interview
-              <ArrowRight className="h-5 w-5" />
+              Generate interview
+              <ArrowRight className="size-4" aria-hidden="true" />
             </button>
             <button
               onClick={() => setShowReconfigure(true)}
-              className="px-6 py-4 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-all font-medium flex items-center justify-center gap-2"
+              className="btn-quiet"
             >
-              <Settings className="h-5 w-5" />
+              <Settings className="size-4" aria-hidden="true" />
               Reconfigure
             </button>
           </div>
 
-          {/* Success/Error Messages */}
-          {success && (
-            <div className="mt-4 p-4 bg-green-500/20 backdrop-blur-sm border border-green-500/50 rounded-lg">
-              <p className="text-green-200">{success}</p>
-            </div>
-          )}
-          {error && (
-            <div className="mt-4 p-4 bg-red-500/20 backdrop-blur-sm border border-red-500/50 rounded-lg">
-              <p className="text-red-200">{error}</p>
-            </div>
-          )}
-        </div>
+          <div className="mt-4">{feedbackBanners}</div>
+        </motion.div>
 
-        {/* Info Card */}
-        <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-6 border border-white/10">
-          <h3 className="font-semibold mb-3 text-white text-lg">What you can do:</h3>
-          <ul className="space-y-2 text-sm text-gray-300">
-            <li className="flex items-center gap-2">
-              <CheckCircle className="h-4 w-4 text-green-400" />
-              Generate unlimited interviews via voice call
-            </li>
-            <li className="flex items-center gap-2">
-              <CheckCircle className="h-4 w-4 text-green-400" />
-              Use your personalized AI interview assistant
-            </li>
-            <li className="flex items-center gap-2">
-              <CheckCircle className="h-4 w-4 text-green-400" />
-              All costs are billed to your Vapi account
-            </li>
+        {/* What you get */}
+        <div className="panel p-7">
+          <h3 className="text-sm font-semibold tracking-tight text-strong">
+            What you can do
+          </h3>
+          <ul className="mt-4 flex list-none flex-col gap-2.5">
+            {[
+              "Generate unlimited interviews via voice call",
+              "Use your personalized AI interview assistant",
+              "All costs are billed to your Vapi account",
+            ].map((item) => (
+              <li key={item} className="flex items-center gap-2.5 text-sm text-body">
+                <CheckCircle2
+                  className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400"
+                  aria-hidden="true"
+                />
+                {item}
+              </li>
+            ))}
           </ul>
         </div>
       </div>
     );
   }
 
-  // Show the link form (for new users or reconfiguring)
+  // Link / reconfigure form
   return (
-    <div className="max-w-2xl mx-auto p-6 space-y-6">
-      <div className="bg-white/5 backdrop-blur-lg rounded-2xl shadow-2xl p-8 border border-white/10">
+    <div className="flex flex-col gap-4">
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35 }}
+        className="panel p-7"
+      >
         {showReconfigure && (
           <button
             onClick={() => setShowReconfigure(false)}
-            className="mb-4 text-gray-400 hover:text-white transition-colors flex items-center gap-2 text-sm"
+            className="mb-5 inline-flex cursor-pointer items-center gap-1.5 text-sm text-faint transition-colors duration-200 hover:text-strong"
           >
-            ← Back to overview
+            <ArrowLeft className="size-4" aria-hidden="true" />
+            Back to overview
           </button>
         )}
-        <h2 className="text-2xl font-bold mb-4 text-white">
-          {showReconfigure ? 'Reconfigure Vapi' : 'Vapi Configuration'}
-        </h2>
-        <p className="text-gray-300 mb-6">
-          {showReconfigure
-            ? 'Update your Vapi credentials with new API keys.'
-            : 'Link your personal Vapi API key to get your own interview assistant.'}
-        </p>
 
-        <div className="space-y-4">
-          {/* Private API Key Input */}
+        <div className="flex items-center gap-4">
+          <div className="icon-tile size-12 shrink-0">
+            <KeyRound className="size-5 text-accent" aria-hidden="true" />
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold tracking-tight text-strong">
+              {showReconfigure ? "Reconfigure Vapi" : "Connect your Vapi account"}
+            </h2>
+            <p className="text-sm text-soft">
+              {showReconfigure
+                ? "Update your Vapi credentials with new API keys."
+                : "Link your personal API key to get your own interview assistant."}
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-7 flex flex-col gap-5">
+          {/* Private API Key */}
           <div>
             <label
               htmlFor="apiKey"
-              className="block text-sm font-medium mb-2 text-white"
+              className="mb-2 block text-sm font-medium text-body"
             >
-              Vapi Private API Key
+              Private API key
             </label>
             <input
               id="apiKey"
               type="password"
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
-              placeholder="Enter your private API key (for cloning)"
-              className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg focus:ring-2 focus:ring-orange focus:border-transparent text-white placeholder-gray-400 transition-all"
+              placeholder="vapi_sk_…"
+              className="field-trigger placeholder:text-faint"
               disabled={loading}
             />
-            <p className="text-xs text-gray-400 mt-2">
-              Used for cloning assistant and tool to your account
+            <p className="mt-1.5 text-xs text-faint">
+              Used once to clone the assistant and tool into your account.
             </p>
           </div>
 
-          {/* Public Web Token Input */}
+          {/* Public Web Token */}
           <div>
             <label
               htmlFor="webToken"
-              className="block text-sm font-medium mb-2 text-white"
+              className="mb-2 block text-sm font-medium text-body"
             >
-              Vapi Public Web Token
+              Public web token
             </label>
             <input
               id="webToken"
               type="password"
               value={webToken}
               onChange={(e) => setWebToken(e.target.value)}
-              placeholder="Enter your public web token (for making calls)"
-              className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg focus:ring-2 focus:ring-orange focus:border-transparent text-white placeholder-gray-400 transition-all"
+              placeholder="vapi_pk_…"
+              className="field-trigger placeholder:text-faint"
               disabled={loading}
             />
-            <div className="text-xs text-gray-400 mt-2">
-              Used for making voice calls. Get both keys from{' '}
+            <div className="mt-1.5 text-xs text-faint">
+              Used for voice calls. Get both keys from the{" "}
               <LinkPreview
                 url="https://dashboard.vapi.ai/org/api-keys"
-                className="text-orange hover:underline transition-colors"
+                className="font-medium text-accent hover:underline"
                 isStatic={true}
                 imageSrc="/vapi_dashboard.png"
               >
-                Vapi Dashboard
+                Vapi dashboard
               </LinkPreview>
+              .
             </div>
           </div>
 
-          {/* Submit Button */}
           <button
             onClick={handleLinkAndClone}
             disabled={loading || !apiKey.trim() || !webToken.trim()}
-            className="w-full px-6 py-4 bg-orange text-white rounded-lg hover:bg-orange/90 disabled:bg-gray-600 disabled:cursor-not-allowed transition-all font-semibold text-lg shadow-lg hover:shadow-orange/50"
+            className="btn-accent !h-12 w-full"
           >
             {loading ? (
-              <span className="flex items-center justify-center gap-2">
-                <svg
-                  className="animate-spin h-5 w-5"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  />
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  />
-                </svg>
-                Processing...
-              </span>
+              <>
+                <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                Linking and cloning…
+              </>
             ) : showReconfigure ? (
-              'Update & Clone New Assistant'
+              "Update & clone new assistant"
             ) : (
-              'Link API Key & Clone Assistant'
+              "Link key & clone assistant"
             )}
           </button>
 
-          {/* Delete Credentials Button (only in reconfigure mode) */}
           {showReconfigure && existingCredentials && (
             <button
               onClick={handleDeleteCredentials}
               disabled={loading}
-              className="w-full px-6 py-3 bg-red-500/20 text-red-300 border border-red-500/30 rounded-lg hover:bg-red-500/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium flex items-center justify-center gap-2"
+              className="inline-flex h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-full border border-red-500/30 bg-red-500/10 text-sm font-medium text-red-700 transition-colors duration-200 hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50 dark:text-red-300"
             >
-              <Trash2 className="h-4 w-4" />
-              Delete Credentials
+              <Trash2 className="size-4" aria-hidden="true" />
+              Delete credentials
             </button>
           )}
 
-          {/* Error Message */}
-          {error && (
-            <div className="p-4 bg-red-500/20 backdrop-blur-sm border border-red-500/50 rounded-lg">
-              <p className="text-red-200">{error}</p>
-            </div>
-          )}
+          {feedbackBanners}
 
-          {/* Success Message */}
-          {success && (
-            <div className="p-4 bg-green-500/20 backdrop-blur-sm border border-green-500/50 rounded-lg">
-              <p className="text-green-200">{success}</p>
-            </div>
-          )}
-
-          {/* Clone Result */}
+          {/* Clone details */}
           {cloneResult && (
-            <div className="p-5 bg-blue-500/10 backdrop-blur-sm border border-blue-500/30 rounded-lg space-y-3">
-              <h3 className="font-semibold text-blue-300 text-lg">
-                Clone Details:
-              </h3>
-              <div className="text-sm space-y-2 text-blue-200">
-                <p>
-                  <strong className="text-white">Assistant ID:</strong>{' '}
-                  <code className="bg-white/10 px-3 py-1 rounded text-blue-300 font-mono">
-                    {cloneResult.assistantId}
-                  </code>
-                </p>
-                <p>
-                  <strong className="text-white">Tool ID:</strong>{' '}
-                  <code className="bg-white/10 px-3 py-1 rounded text-blue-300 font-mono">
-                    {cloneResult.toolId}
-                  </code>
-                </p>
-                <details className="mt-3">
-                  <summary className="cursor-pointer hover:underline text-blue-300">
-                    View Actions ({cloneResult.actions.length})
-                  </summary>
-                  <ul className="mt-2 space-y-1 ml-4 list-disc text-gray-300">
-                    {cloneResult.actions.map((action, idx) => (
-                      <li key={idx}>{action}</li>
-                    ))}
-                  </ul>
-                </details>
-              </div>
+            <div className="rounded-xl border border-hairline bg-raise p-4">
+              <h3 className="text-sm font-semibold text-strong">Clone details</h3>
+              <dl className="mt-3 flex flex-col gap-2 text-sm">
+                <div className="flex items-center justify-between gap-4">
+                  <dt className="text-faint">Assistant ID</dt>
+                  <dd>
+                    <code className="font-mono text-xs text-body">
+                      {maskId(cloneResult.assistantId)}
+                    </code>
+                  </dd>
+                </div>
+                <div className="flex items-center justify-between gap-4">
+                  <dt className="text-faint">Tool ID</dt>
+                  <dd>
+                    <code className="font-mono text-xs text-body">
+                      {maskId(cloneResult.toolId)}
+                    </code>
+                  </dd>
+                </div>
+              </dl>
+              <details className="mt-3 text-sm">
+                <summary className="cursor-pointer text-faint transition-colors duration-200 hover:text-strong">
+                  View actions ({cloneResult.actions.length})
+                </summary>
+                <ul className="mt-2 flex list-none flex-col gap-1 pl-1 text-xs text-soft">
+                  {cloneResult.actions.map((action, idx) => (
+                    <li key={idx}>{action}</li>
+                  ))}
+                </ul>
+              </details>
             </div>
           )}
         </div>
-      </div>
+      </motion.div>
 
-      {/* Instructions */}
-      <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-8 border border-white/10">
-        <h3 className="font-semibold mb-4 text-white text-xl">How it works:</h3>
-        <ol className="list-decimal list-inside space-y-3 text-sm text-gray-300">
-          <li>Get both keys from your Vapi Dashboard → API Keys section</li>
-          <li>Enter your <strong className="text-white">Private API Key</strong> (for server operations)</li>
-          <li>Enter your <strong className="text-white">Public Web Token</strong> (for voice calls)</li>
-          <li>Click the button to validate and link your keys</li>
-          <li>
-            The system will automatically clone the interview assistant and tool
-            to your account
-          </li>
-          <li>
-            Your personalized assistant will be used for all future interview
-            calls
-          </li>
-          <li className="text-orange font-medium">All billing will be on your Vapi account</li>
+      {/* How it works */}
+      <div className="panel p-7">
+        <h3 className="text-sm font-semibold tracking-tight text-strong">
+          How it works
+        </h3>
+        <ol className="mt-4 flex list-none flex-col gap-3">
+          {[
+            "Get both keys from your Vapi dashboard's API Keys section.",
+            "Enter your private key (server operations) and public web token (voice calls).",
+            "We validate the keys and clone the interview assistant into your account.",
+            "Your personal assistant handles all future interview calls — billing stays on your Vapi account.",
+          ].map((step, index) => (
+            <li key={step} className="flex gap-3 text-sm text-body">
+              <span className="flex size-6 shrink-0 items-center justify-center rounded-full border border-hairline bg-raise text-xs font-semibold text-soft">
+                {index + 1}
+              </span>
+              <span className="leading-relaxed">{step}</span>
+            </li>
+          ))}
         </ol>
       </div>
     </div>

@@ -26,12 +26,19 @@
   --color-dark-200: #27282f;
   --color-dark-300: #242633;
 
-  /* Redesign tokens — minimal dark system */
-  --color-surface: #09090b;
-  --color-surface-raised: #101013;
-  --color-surface-overlay: #17171b;
+  /* Redesign tokens — semantic, theme-aware (values set on :root / .dark) */
+  --color-surface: var(--surface);
+  --color-surface-overlay: var(--overlay);
   --color-accent: #ed5b23;
   --color-accent-soft: #ff8a50;
+  --color-hairline: var(--hairline);
+  --color-hairline-strong: var(--hairline-strong);
+  --color-raise: var(--raise);
+  --color-hover: var(--hover-bg);
+  --color-strong: var(--tx-strong);
+  --color-body: var(--tx-body);
+  --color-soft: var(--tx-soft);
+  --color-faint: var(--tx-faint);
 
   --font-poppins: "Poppins", sans-serif;
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system,
@@ -41,6 +48,20 @@
 }
 
 :root {
+  /* Light theme values for the redesign tokens */
+  --surface: #fbfbfd;
+  --overlay: #ffffff;
+  --hairline: rgba(9, 9, 11, 0.09);
+  --hairline-strong: rgba(9, 9, 11, 0.18);
+  --raise: rgba(9, 9, 11, 0.035);
+  --hover-bg: rgba(9, 9, 11, 0.06);
+  --tx-strong: #111113;
+  --tx-body: #3f3f46;
+  --tx-soft: #52525c;
+  --tx-faint: #71717a;
+  --cta-bg: #111113;
+  --cta-fg: #ffffff;
+
   --radius: 0.625rem;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
@@ -76,6 +97,20 @@
 }
 
 .dark {
+  /* Dark theme values for the redesign tokens */
+  --surface: #09090b;
+  --overlay: #17171b;
+  --hairline: rgba(255, 255, 255, 0.09);
+  --hairline-strong: rgba(255, 255, 255, 0.18);
+  --raise: rgba(255, 255, 255, 0.04);
+  --hover-bg: rgba(255, 255, 255, 0.07);
+  --tx-strong: #ffffff;
+  --tx-body: #d4d4d8;
+  --tx-soft: #a1a1aa;
+  --tx-faint: #71717a;
+  --cta-bg: #ffffff;
+  --cta-fg: #0a0a0a;
+
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
@@ -160,7 +195,7 @@
     color: #fff;
   }
   p {
-    @apply text-light-100;
+    color: var(--tx-body);
   }
   h2 {
     @apply text-3xl font-semibold;
@@ -442,16 +477,18 @@
 @layer components {
   /* Hairline-bordered raised surface */
   .panel {
-    @apply rounded-2xl border border-white/[0.08] bg-white/[0.03];
+    @apply rounded-2xl border border-hairline bg-raise;
   }
 
   .panel-hover {
-    @apply transition-colors duration-200 hover:border-white/[0.16] hover:bg-white/[0.05];
+    @apply transition-colors duration-200 hover:border-hairline-strong hover:bg-hover;
   }
 
-  /* Primary pill CTA — white on dark, Apple style */
+  /* Primary pill CTA — inverts with theme, Apple style */
   .btn-cta {
-    @apply inline-flex items-center justify-center gap-2 rounded-full bg-white px-6 h-11 text-[15px] font-medium text-black transition-colors duration-200 hover:bg-white/85 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed;
+    background-color: var(--cta-bg);
+    color: var(--cta-fg);
+    @apply inline-flex items-center justify-center gap-2 rounded-full px-6 h-11 text-[15px] font-medium transition-opacity duration-200 hover:opacity-85 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-strong cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed;
   }
 
   /* Accent pill CTA */
@@ -461,7 +498,7 @@
 
   /* Quiet secondary action */
   .btn-quiet {
-    @apply inline-flex items-center justify-center gap-2 rounded-full border border-white/[0.14] bg-transparent px-6 h-11 text-[15px] font-medium text-white transition-colors duration-200 hover:bg-white/[0.06] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/60 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply inline-flex items-center justify-center gap-2 rounded-full border border-hairline-strong bg-transparent px-6 h-11 text-[15px] font-medium text-strong transition-colors duration-200 hover:bg-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-strong cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed;
   }
 
   /* Small uppercase section eyebrow */
@@ -471,32 +508,31 @@
 
   /* Display headline */
   .display {
-    @apply font-semibold tracking-tight text-white;
+    @apply font-semibold tracking-tight text-strong;
   }
 
-  .text-secondary {
-    @apply text-zinc-400;
-  }
-
-  .text-tertiary {
-    @apply text-zinc-500;
+  /* Icon container tile */
+  .icon-tile {
+    @apply flex items-center justify-center rounded-xl border border-hairline bg-raise;
   }
 
   /* Sticky glass navigation */
   .glass-nav {
-    @apply sticky top-0 z-50 border-b border-white/[0.07] bg-surface/75 backdrop-blur-xl;
+    @apply sticky top-0 z-50 border-b border-hairline bg-surface/75 backdrop-blur-xl;
   }
 
   /* Form fields for the redesigned interview form */
   .field-trigger {
-    @apply !h-12 w-full !rounded-xl !border-white/[0.1] !bg-white/[0.04] px-4 text-[15px] text-white transition-colors duration-200 hover:!border-white/[0.2] focus:!border-white/[0.35] focus-visible:!ring-0;
+    @apply !h-12 w-full !rounded-xl border !border-hairline !bg-raise px-4 text-[15px] text-strong transition-colors duration-200 hover:!border-hairline-strong focus:!border-hairline-strong focus-visible:!ring-0 outline-none;
   }
 
-  /* Subtle grid fade used behind hero */
+  /* Subtle glow behind hero */
   .hero-glow {
-    background:
-      radial-gradient(600px 280px at 50% -10%, rgba(237, 91, 35, 0.14), transparent 70%),
-      radial-gradient(900px 420px at 50% 0%, rgba(255, 255, 255, 0.05), transparent 70%);
+    background: radial-gradient(
+      600px 280px at 50% -10%,
+      rgba(237, 91, 35, 0.14),
+      transparent 70%
+    );
   }
 }
 

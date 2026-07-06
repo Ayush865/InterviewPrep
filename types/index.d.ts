@@ -60,6 +60,8 @@ interface AgentProps {
   feedbackId?: string;
   type: "generate" | "interview";
   questions?: string[];
+  /** Notified when the call goes live / ends, e.g. to collapse page chrome */
+  onLiveChange?: (isLive: boolean) => void;
 }
 
 interface RouteParams {

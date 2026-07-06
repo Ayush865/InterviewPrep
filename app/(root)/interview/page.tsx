@@ -23,7 +23,7 @@ const Page = () => {
     <div className="mx-auto w-full max-w-xl pb-24 pt-12 max-sm:pt-8">
       <header className="text-center">
         <h1 className="display text-3xl">Create an interview</h1>
-        <p className="mt-2 text-zinc-400">
+        <p className="mt-2 text-soft">
           Set up your practice session in under a minute.
         </p>
       </header>
@@ -37,15 +37,15 @@ const Page = () => {
           <Phone className="size-5 text-accent" aria-hidden="true" />
         </div>
         <div className="flex-1">
-          <p className="font-medium text-white">
+          <p className="font-medium text-strong">
             Prefer to talk it through?
           </p>
-          <p className="text-sm text-zinc-500">
+          <p className="text-sm text-faint">
             Describe your interview to our AI hiring manager on a call.
           </p>
         </div>
         <ArrowRight
-          className="size-5 text-zinc-500 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-white"
+          className="size-5 text-faint transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-strong"
           aria-hidden="true"
         />
       </Link>

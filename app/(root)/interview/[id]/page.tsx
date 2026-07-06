@@ -45,7 +45,7 @@ const InterviewDetails = async ({ params }: RouteParams) => {
           </div>
           <div>
             <h2 className="display text-2xl">Free plan limit reached</h2>
-            <p className="mt-3 leading-relaxed text-zinc-400">
+            <p className="mt-3 leading-relaxed text-soft">
               You&apos;ve taken your free interview. Connect your own Vapi key
               or upgrade to Premium for unlimited interviews.
             </p>
@@ -61,7 +61,7 @@ const InterviewDetails = async ({ params }: RouteParams) => {
           </div>
           <Link
             href="/"
-            className="text-sm text-zinc-500 transition-colors duration-200 hover:text-white"
+            className="text-sm text-faint transition-colors duration-200 hover:text-strong"
           >
             Back to dashboard
           </Link>
@@ -75,7 +75,7 @@ const InterviewDetails = async ({ params }: RouteParams) => {
       {/* Interview header */}
       <header className="panel flex items-center justify-between gap-4 p-5 max-sm:flex-col max-sm:items-start">
         <div className="flex items-center gap-4">
-          <div className="flex size-12 shrink-0 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.04] p-2">
+          <div className="flex size-12 shrink-0 items-center justify-center rounded-xl border border-hairline bg-raise p-2">
             <Image
               src={interview.coverImage || "/covers/Amazon.svg"}
               alt=""
@@ -85,10 +85,10 @@ const InterviewDetails = async ({ params }: RouteParams) => {
             />
           </div>
           <div>
-            <h1 className="text-lg font-semibold capitalize tracking-tight text-white">
+            <h1 className="text-lg font-semibold capitalize tracking-tight text-strong">
               {interview.role} Interview
             </h1>
-            <p className="text-sm capitalize text-zinc-500">
+            <p className="text-sm capitalize text-faint">
               {interview.level} · {interview.questions.length} questions
             </p>
           </div>
@@ -96,7 +96,7 @@ const InterviewDetails = async ({ params }: RouteParams) => {
 
         <div className="flex items-center gap-3">
           <DisplayTechIcons techStack={interview.techstack} />
-          <span className="inline-flex items-center rounded-full border border-white/[0.1] bg-white/[0.04] px-3 py-1 text-xs font-medium capitalize text-zinc-300">
+          <span className="inline-flex items-center rounded-full border border-hairline bg-raise px-3 py-1 text-xs font-medium capitalize text-body">
             {interview.type}
           </span>
         </div>

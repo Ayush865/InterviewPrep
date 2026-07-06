@@ -5,6 +5,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Vapi from "@vapi-ai/web";
 import { Phone, PhoneOff, Loader2, X } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
 
 import { cn } from "@/lib/utils";
 import { vapi } from "@/lib/vapi.sdk";
@@ -43,6 +44,7 @@ const Agent = ({
   feedbackId,
   type,
   questions,
+  onLiveChange,
 }: AgentProps) => {
   const router = useRouter();
 
@@ -65,6 +67,11 @@ const Agent = ({
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const feedbackGeneratedRef = useRef(false);
   const messagesRef = useRef<SavedMessage[]>([]);
+
+  // Let the host page react to the call going live (e.g. dissolve its header)
+  useEffect(() => {
+    onLiveChange?.(callStatus === CallStatus.ACTIVE);
+  }, [callStatus, onLiveChange]);
 
   // Initialize Vapi instance — user's own API key if linked, default otherwise
   useEffect(() => {
@@ -273,14 +280,14 @@ const Agent = ({
           className={cn(
             "inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-sm font-medium",
             isLive
-              ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-400"
-              : "border-white/[0.1] bg-white/[0.04] text-zinc-400"
+              ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+              : "border-hairline bg-raise text-soft"
           )}
         >
           <span
             className={cn(
               "size-1.5 rounded-full",
-              isLive ? "animate-pulse bg-emerald-400" : "bg-zinc-500"
+              isLive ? "animate-pulse bg-emerald-500 dark:bg-emerald-400" : "bg-faint"
             )}
             aria-hidden="true"
           />
@@ -288,10 +295,17 @@ const Agent = ({
         </span>
       </div>
 
-      {/* Participants */}
+      {/* Participants — tiles expand smoothly once the call goes live */}
       <div className="grid grid-cols-2 gap-4 max-sm:grid-cols-1">
         {/* AI interviewer */}
-        <div className="panel flex flex-col items-center justify-center gap-4 px-6 py-12">
+        <motion.div
+          layout
+          transition={{ type: "spring", stiffness: 220, damping: 28 }}
+          className={cn(
+            "panel flex flex-col items-center justify-center gap-4 px-6",
+            isLive ? "py-20 max-sm:py-14" : "py-12"
+          )}
+        >
           <div className="relative">
             <div
               className={cn(
@@ -300,7 +314,13 @@ const Agent = ({
               )}
               aria-hidden="true"
             />
-            <div className="relative size-24 overflow-hidden rounded-full border border-white/[0.12]">
+            <motion.div
+              layout
+              className={cn(
+                "relative overflow-hidden rounded-full border border-hairline-strong",
+                isLive ? "size-32" : "size-24"
+              )}
+            >
               <Image
                 src={
                   type === "generate"
@@ -311,69 +331,99 @@ const Agent = ({
                 fill
                 className="object-cover"
               />
-            </div>
+            </motion.div>
           </div>
-          <div className="text-center">
-            <p className="font-medium text-white">{interviewerName}</p>
-            <p className="mt-0.5 text-sm text-zinc-500">
+          <motion.div layout className="text-center">
+            <p className="font-medium text-strong">{interviewerName}</p>
+            <p className="mt-0.5 text-sm text-faint">
               {isSpeaking ? "Speaking…" : "Hired Fox AI"}
             </p>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
 
         {/* User */}
-        <div className="panel flex flex-col items-center justify-center gap-4 px-6 py-12">
-          <div className="relative size-24 overflow-hidden rounded-full border border-white/[0.12]">
+        <motion.div
+          layout
+          transition={{ type: "spring", stiffness: 220, damping: 28 }}
+          className={cn(
+            "panel flex flex-col items-center justify-center gap-4 px-6",
+            isLive ? "py-20 max-sm:py-14" : "py-12"
+          )}
+        >
+          <motion.div
+            layout
+            className={cn(
+              "relative overflow-hidden rounded-full border border-hairline-strong",
+              isLive ? "size-32" : "size-24"
+            )}
+          >
             <Image
               src={userImage || "/user-avatar.png"}
               alt={userName || "You"}
               fill
               className="object-cover"
             />
-          </div>
-          <div className="text-center">
-            <p className="font-medium text-white">{userName}</p>
-            <p className="mt-0.5 text-sm text-zinc-500">You</p>
-          </div>
-        </div>
+          </motion.div>
+          <motion.div layout className="text-center">
+            <p className="font-medium text-strong">{userName}</p>
+            <p className="mt-0.5 text-sm text-faint">You</p>
+          </motion.div>
+        </motion.div>
       </div>
 
       {/* Live transcript */}
-      {lastMessage && (
-        <div className="panel px-6 py-5" aria-live="polite">
-          <p className="text-xs font-medium uppercase tracking-wider text-zinc-500">
-            {lastMessage.role === "assistant" ? interviewerName : userName}
-          </p>
-          <p
-            key={lastMessage.content}
-            className="animate-fadeIn mt-2 text-[15px] leading-relaxed text-zinc-200"
+      <AnimatePresence>
+        {lastMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 6 }}
+            transition={{ duration: 0.3 }}
+            className="panel px-6 py-5"
+            aria-live="polite"
           >
-            {lastMessage.content}
-          </p>
-        </div>
-      )}
+            <p className="text-xs font-medium uppercase tracking-wider text-faint">
+              {lastMessage.role === "assistant" ? interviewerName : userName}
+            </p>
+            <p
+              key={lastMessage.content}
+              className="animate-fadeIn mt-2 text-[15px] leading-relaxed text-body"
+            >
+              {lastMessage.content}
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Error banner */}
-      {error && (
-        <div
-          role="alert"
-          className="flex items-start justify-between gap-4 rounded-xl border border-red-500/25 bg-red-500/10 px-5 py-4"
-        >
-          <p className="text-sm leading-relaxed text-red-300">{error}</p>
-          <button
-            onClick={() => setError(null)}
-            className="shrink-0 rounded-full p-1 text-red-300 transition-colors duration-200 hover:bg-red-500/20 hover:text-white"
-            aria-label="Dismiss error"
+      <AnimatePresence>
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            role="alert"
+            className="flex items-start justify-between gap-4 rounded-xl border border-red-500/25 bg-red-500/10 px-5 py-4"
           >
-            <X className="size-4" aria-hidden="true" />
-          </button>
-        </div>
-      )}
+            <p className="text-sm leading-relaxed text-red-700 dark:text-red-300">
+              {error}
+            </p>
+            <button
+              onClick={() => setError(null)}
+              className="shrink-0 rounded-full p-1 text-red-700 dark:text-red-300 transition-colors duration-200 hover:bg-red-500/20 hover:text-strong"
+              aria-label="Dismiss error"
+            >
+              <X className="size-4" aria-hidden="true" />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Call controls */}
       <div className="flex flex-col items-center gap-3">
         {isGeneratingFeedback ? (
-          <div className="flex items-center gap-2 text-zinc-400">
+          <div className="flex items-center gap-2 text-soft">
             <Loader2 className="size-4 animate-spin" aria-hidden="true" />
             <span className="text-sm">Analyzing your interview…</span>
           </div>
@@ -406,7 +456,7 @@ const Agent = ({
         )}
 
         {callStatus === CallStatus.INACTIVE && !error && (
-          <p className="text-sm text-zinc-500">
+          <p className="text-sm text-faint">
             Make sure your microphone is enabled.
           </p>
         )}

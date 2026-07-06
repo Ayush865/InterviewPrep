@@ -5,6 +5,7 @@ import { currentUser } from "@clerk/nextjs/server";
 import { UserButton } from "@clerk/nextjs";
 import { Settings } from "lucide-react";
 import LogoutHandler from "@/components/LogoutHandler";
+import ThemeToggle from "@/components/ThemeToggle";
 
 const Layout = async ({ children }: { children: ReactNode }) => {
   const user = await currentUser();
@@ -27,23 +28,24 @@ const Layout = async ({ children }: { children: ReactNode }) => {
               height={36}
               className="size-9 object-contain"
             />
-            <span className="text-[17px] font-semibold tracking-tight text-white">
-              Hired<span className="text-accent"> Fox</span>
+            <span className="text-[17px] font-semibold tracking-tight text-strong">
+              Hired Fox
             </span>
           </Link>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             {user ? (
               <>
                 <Link
                   href="/interview"
-                  className="hidden rounded-full px-4 py-2 text-sm font-medium text-zinc-300 transition-colors duration-200 hover:bg-white/[0.06] hover:text-white sm:inline-flex"
+                  className="hidden rounded-full px-4 py-2 text-sm font-medium text-soft transition-colors duration-200 hover:bg-hover hover:text-strong sm:inline-flex"
                 >
                   New interview
                 </Link>
+                <ThemeToggle />
                 <Link
                   href="/settings/vapi"
-                  className="inline-flex size-10 items-center justify-center rounded-full text-zinc-300 transition-colors duration-200 hover:bg-white/[0.06] hover:text-white"
+                  className="inline-flex size-10 items-center justify-center rounded-full text-soft transition-colors duration-200 hover:bg-hover hover:text-strong"
                   aria-label="Vapi settings"
                 >
                   <Settings className="size-5" aria-hidden="true" />
@@ -57,12 +59,12 @@ const Layout = async ({ children }: { children: ReactNode }) => {
                 </div>
               </>
             ) : (
-              <Link
-                href="/sign-in"
-                className="btn-cta !h-9 !px-5 text-sm"
-              >
-                Sign in
-              </Link>
+              <>
+                <ThemeToggle />
+                <Link href="/sign-in" className="btn-cta !h-9 !px-5 text-sm">
+                  Sign in
+                </Link>
+              </>
             )}
           </div>
         </nav>
@@ -72,7 +74,7 @@ const Layout = async ({ children }: { children: ReactNode }) => {
         {children}
       </main>
 
-      <footer className="border-t border-white/[0.07]">
+      <footer className="border-t border-hairline">
         <div className="mx-auto flex w-full max-w-6xl flex-col items-center justify-between gap-3 px-6 py-8 sm:flex-row">
           <div className="flex items-center gap-2">
             <Image
@@ -82,15 +84,15 @@ const Layout = async ({ children }: { children: ReactNode }) => {
               height={22}
               className="size-[22px] object-contain"
             />
-            <span className="text-sm text-zinc-500">
+            <span className="text-sm text-faint">
               © {new Date().getFullYear()} Hired Fox
             </span>
           </div>
-          <p className="text-sm text-zinc-500">
+          <p className="text-sm !text-faint">
             Built by{" "}
             <Link
               href="https://www.linkedin.com/in/ayush-prakash-2bb65122b/"
-              className="font-medium text-zinc-300 transition-colors duration-200 hover:text-accent"
+              className="font-medium text-body transition-colors duration-200 hover:text-accent"
             >
               Ayush Prakash
             </Link>

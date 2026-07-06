@@ -10,19 +10,19 @@ export const GateLoading = () => (
     role="status"
     aria-label="Loading"
   >
-    <Loader2 className="size-6 animate-spin text-zinc-500" aria-hidden="true" />
+    <Loader2 className="size-6 animate-spin text-faint" aria-hidden="true" />
   </div>
 );
 
 /** Shown when the visitor isn't signed in */
 export const GateAuthRequired = () => (
   <div className="flex h-[60vh] flex-col items-center justify-center gap-5 text-center">
-    <div className="flex size-12 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.04]">
-      <Lock className="size-5 text-zinc-400" aria-hidden="true" />
+    <div className="flex size-12 items-center justify-center rounded-full border border-hairline bg-raise">
+      <Lock className="size-5 text-soft" aria-hidden="true" />
     </div>
     <div>
       <h2 className="display text-2xl">Sign in to continue</h2>
-      <p className="mt-2 max-w-sm text-zinc-400">
+      <p className="mt-2 max-w-sm text-soft">
         You need an account to generate interviews.
       </p>
     </div>
@@ -41,7 +41,7 @@ export const GateLimitReached = () => (
       </div>
       <div>
         <h2 className="display text-2xl">Free plan limit reached</h2>
-        <p className="mt-3 leading-relaxed text-zinc-400">
+        <p className="mt-3 leading-relaxed text-soft">
           You&apos;ve used your free interview generation. Connect your own
           Vapi key or upgrade to Premium for unlimited interviews.
         </p>
@@ -57,7 +57,7 @@ export const GateLimitReached = () => (
       </div>
       <Link
         href="/"
-        className="text-sm text-zinc-500 transition-colors duration-200 hover:text-white"
+        className="text-sm text-faint transition-colors duration-200 hover:text-strong"
       >
         Back to dashboard
       </Link>

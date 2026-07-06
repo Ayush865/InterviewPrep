@@ -153,16 +153,16 @@ const InterviewForm = ({ userId, resumeData }: InterviewFormProps) => {
       <div className="panel w-full p-8 max-sm:p-6">
         {/* Resume context toggle — only shown when a resume exists */}
         {resumeData && (
-          <div className="mb-8 flex items-center justify-between gap-4 rounded-xl border border-white/[0.08] bg-white/[0.03] p-4">
+          <div className="mb-8 flex items-center justify-between gap-4 rounded-xl border border-hairline bg-raise p-4">
             <div className="flex items-center gap-3">
-              <div className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-white/[0.08] bg-white/[0.04]">
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-hairline bg-raise">
                 <FileText className="size-4 text-accent" aria-hidden="true" />
               </div>
               <div>
-                <p className="text-sm font-medium text-white">
+                <p className="text-sm font-medium text-strong">
                   Use resume context
                 </p>
-                <p className="text-xs text-zinc-500">
+                <p className="text-xs text-faint">
                   Tailor questions to your background
                   {resumeData.fileName ? ` — ${resumeData.fileName}` : ""}
                 </p>
@@ -175,7 +175,7 @@ const InterviewForm = ({ userId, resumeData }: InterviewFormProps) => {
               aria-label="Use resume context"
               onClick={handleResumeToggle}
               className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
-                useResume ? "bg-accent" : "bg-white/[0.12]"
+                useResume ? "bg-accent" : "bg-hairline-strong"
               }`}
             >
               <span
@@ -196,7 +196,7 @@ const InterviewForm = ({ userId, resumeData }: InterviewFormProps) => {
                 name="role"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-sm font-medium text-zinc-300">
+                    <FormLabel className="text-sm font-medium text-body">
                       Role
                     </FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
@@ -205,7 +205,7 @@ const InterviewForm = ({ userId, resumeData }: InterviewFormProps) => {
                           <SelectValue placeholder="Select a role" />
                         </SelectTrigger>
                       </FormControl>
-                      <SelectContent className="border-white/[0.1] bg-surface-overlay">
+                      <SelectContent className="border-hairline bg-surface-overlay">
                         {interviewRoles.map((role) => (
                           <SelectItem key={role.value} value={role.value}>
                             {role.label}
@@ -224,7 +224,7 @@ const InterviewForm = ({ userId, resumeData }: InterviewFormProps) => {
                 name="level"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-sm font-medium text-zinc-300">
+                    <FormLabel className="text-sm font-medium text-body">
                       Experience level
                     </FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
@@ -233,7 +233,7 @@ const InterviewForm = ({ userId, resumeData }: InterviewFormProps) => {
                           <SelectValue placeholder="Select level" />
                         </SelectTrigger>
                       </FormControl>
-                      <SelectContent className="border-white/[0.1] bg-surface-overlay">
+                      <SelectContent className="border-hairline bg-surface-overlay">
                         {interviewLevels.map((level) => (
                           <SelectItem key={level.value} value={level.value}>
                             {level.label}
@@ -253,7 +253,7 @@ const InterviewForm = ({ userId, resumeData }: InterviewFormProps) => {
               name="type"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-sm font-medium text-zinc-300">
+                  <FormLabel className="text-sm font-medium text-body">
                     Interview type
                   </FormLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
@@ -262,7 +262,7 @@ const InterviewForm = ({ userId, resumeData }: InterviewFormProps) => {
                         <SelectValue placeholder="Select interview type" />
                       </SelectTrigger>
                     </FormControl>
-                    <SelectContent className="border-white/[0.1] bg-surface-overlay">
+                    <SelectContent className="border-hairline bg-surface-overlay">
                       {interviewTypes.map((type) => (
                         <SelectItem key={type.value} value={type.value}>
                           {type.label}
@@ -281,9 +281,9 @@ const InterviewForm = ({ userId, resumeData }: InterviewFormProps) => {
               name="company_name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-sm font-medium text-zinc-300">
+                  <FormLabel className="text-sm font-medium text-body">
                     Target company{" "}
-                    <span className="font-normal text-zinc-500">(optional)</span>
+                    <span className="font-normal text-faint">(optional)</span>
                   </FormLabel>
                   <FormControl>
                     <CompanySelect value={field.value} onChange={field.onChange} />
@@ -299,7 +299,7 @@ const InterviewForm = ({ userId, resumeData }: InterviewFormProps) => {
               name="techstack"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-sm font-medium text-zinc-300">
+                  <FormLabel className="text-sm font-medium text-body">
                     Tech stack
                   </FormLabel>
                   <FormControl>
@@ -319,7 +319,7 @@ const InterviewForm = ({ userId, resumeData }: InterviewFormProps) => {
               name="amount"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-sm font-medium text-zinc-300">
+                  <FormLabel className="text-sm font-medium text-body">
                     Number of questions
                   </FormLabel>
                   <div className="flex items-center gap-3">
@@ -330,7 +330,7 @@ const InterviewForm = ({ userId, resumeData }: InterviewFormProps) => {
                       onClick={() => handleAmountChange(-1)}
                       disabled={amount <= 3}
                       aria-label="Fewer questions"
-                      className="size-12 rounded-xl border-white/[0.1] bg-white/[0.04] hover:border-white/[0.2] hover:bg-white/[0.08]"
+                      className="size-12 rounded-xl border-hairline bg-raise hover:border-hairline-strong hover:bg-hover"
                     >
                       <Minus className="size-4" aria-hidden="true" />
                     </Button>
@@ -352,11 +352,11 @@ const InterviewForm = ({ userId, resumeData }: InterviewFormProps) => {
                       onClick={() => handleAmountChange(1)}
                       disabled={amount >= 15}
                       aria-label="More questions"
-                      className="size-12 rounded-xl border-white/[0.1] bg-white/[0.04] hover:border-white/[0.2] hover:bg-white/[0.08]"
+                      className="size-12 rounded-xl border-hairline bg-raise hover:border-hairline-strong hover:bg-hover"
                     >
                       <Plus className="size-4" aria-hidden="true" />
                     </Button>
-                    <span className="ml-1 text-sm text-zinc-500">
+                    <span className="ml-1 text-sm text-faint">
                       3–15 questions
                     </span>
                   </div>

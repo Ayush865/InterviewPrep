@@ -1,9 +1,16 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { Upload, FileText, CheckCircle, RefreshCw, Loader2 } from "lucide-react";
+import { useRef, useState, DragEvent } from "react";
+import {
+  UploadCloud,
+  FileText,
+  RefreshCw,
+  Loader2,
+  BadgeCheck,
+} from "lucide-react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
+import { motion, AnimatePresence } from "motion/react";
+import { cn } from "@/lib/utils";
 import dayjs from "dayjs";
 
 interface ResumeData {
@@ -20,23 +27,30 @@ interface ResumeUploadSectionProps {
   initialResume?: ResumeData | null;
 }
 
+const MAX_SIZE_MB = 5;
+
 const ResumeUploadSection = ({ userId, initialResume }: ResumeUploadSectionProps) => {
   const [resume, setResume] = useState<ResumeData | null>(initialResume ?? null);
   const [isUploading, setIsUploading] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const allowed = ["application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"];
-    if (!allowed.includes(file.type) && !file.name.endsWith(".pdf") && !file.name.endsWith(".docx")) {
+  const uploadFile = async (file: File) => {
+    const allowed = [
+      "application/pdf",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ];
+    if (
+      !allowed.includes(file.type) &&
+      !file.name.endsWith(".pdf") &&
+      !file.name.endsWith(".docx")
+    ) {
       toast.error("Please upload a PDF or DOCX file.");
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("File too large. Maximum size is 5MB.");
+    if (file.size > MAX_SIZE_MB * 1024 * 1024) {
+      toast.error(`File too large. Maximum size is ${MAX_SIZE_MB}MB.`);
       return;
     }
 
@@ -61,82 +75,173 @@ const ResumeUploadSection = ({ userId, initialResume }: ResumeUploadSectionProps
       toast.success("Resume uploaded and parsed successfully!");
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Failed to upload resume. Please try again."
+        error instanceof Error
+          ? error.message
+          : "Failed to upload resume. Please try again."
       );
     } finally {
       setIsUploading(false);
-      // Reset input so the same file can be re-uploaded if needed
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
-  return (
-    <div className="card-border rounded-xl p-5 w-full">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold flex items-center gap-2">
-          <FileText className="h-5 w-5 text-primary-200" />
-          Resume
-        </h3>
-        {resume && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-light-400 hover:text-white gap-1.5"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isUploading}
-          >
-            <RefreshCw className="h-3.5 w-3.5" />
-            Re-upload
-          </Button>
-        )}
-      </div>
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) await uploadFile(file);
+  };
 
-      {resume ? (
-        <div className="space-y-2">
-          <div className="flex items-start gap-2">
-            <CheckCircle className="h-4 w-4 text-success mt-0.5 shrink-0" />
-            <div className="min-w-0">
-              <p className="text-sm font-medium truncate">{resume.fileName ?? "Resume"}</p>
-              <p className="text-xs text-light-400">
-                Uploaded {dayjs(resume.updatedAt).format("MMM D, YYYY")}
+  const handleDrop = async (e: DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (isUploading) return;
+    const file = e.dataTransfer.files?.[0];
+    if (file) await uploadFile(file);
+  };
+
+  const skills = resume?.parsedSkills ?? [];
+  const visibleSkills = skills.slice(0, 6);
+  const remainingSkills = skills.length - visibleSkills.length;
+
+  return (
+    <div className="panel overflow-hidden">
+      <AnimatePresence mode="wait" initial={false}>
+        {resume ? (
+          <motion.div
+            key="uploaded"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="p-6"
+          >
+            {/* File row */}
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="icon-tile size-11 shrink-0">
+                  <FileText className="size-5 text-accent" aria-hidden="true" />
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium text-strong">
+                    {resume.fileName ?? "Resume"}
+                  </p>
+                  <p className="mt-0.5 flex items-center gap-1.5 text-xs text-faint">
+                    <BadgeCheck
+                      className="size-3.5 text-emerald-600 dark:text-emerald-400"
+                      aria-hidden="true"
+                    />
+                    Parsed · {dayjs(resume.updatedAt).format("MMM D, YYYY")}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploading}
+                className="inline-flex h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-full border border-hairline px-3 text-xs font-medium text-soft transition-colors duration-200 hover:border-hairline-strong hover:text-strong disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isUploading ? (
+                  <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
+                ) : (
+                  <RefreshCw className="size-3.5" aria-hidden="true" />
+                )}
+                {isUploading ? "Uploading…" : "Replace"}
+              </button>
+            </div>
+
+            {/* Parsed details */}
+            {(resume.parsedRole || skills.length > 0) && (
+              <div className="mt-5 border-t border-hairline pt-4">
+                {resume.parsedRole && (
+                  <p className="text-xs text-faint">
+                    Detected role{" "}
+                    <span className="ml-1 font-medium capitalize text-strong">
+                      {resume.parsedRole}
+                    </span>
+                    {resume.parsedLevel && (
+                      <span className="ml-1.5 rounded-full border border-hairline bg-raise px-2 py-0.5 text-[11px] font-medium capitalize text-body">
+                        {resume.parsedLevel}
+                      </span>
+                    )}
+                  </p>
+                )}
+
+                {visibleSkills.length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    {visibleSkills.map((skill) => (
+                      <span
+                        key={skill}
+                        className="rounded-full border border-hairline bg-raise px-2.5 py-1 text-[11px] font-medium text-body"
+                      >
+                        {skill}
+                      </span>
+                    ))}
+                    {remainingSkills > 0 && (
+                      <span className="rounded-full px-2 py-1 text-[11px] text-faint">
+                        +{remainingSkills} more
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </motion.div>
+        ) : (
+          <motion.button
+            key="empty"
+            type="button"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            onClick={() => fileInputRef.current?.click()}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setIsDragging(true);
+            }}
+            onDragLeave={() => setIsDragging(false)}
+            onDrop={handleDrop}
+            disabled={isUploading}
+            className={cn(
+              "flex w-full cursor-pointer flex-col items-center gap-3 px-6 py-10 text-center transition-colors duration-200 disabled:cursor-not-allowed",
+              isDragging ? "bg-accent/5" : "hover:bg-hover"
+            )}
+          >
+            <div
+              className={cn(
+                "flex size-12 items-center justify-center rounded-full border transition-colors duration-200",
+                isDragging
+                  ? "border-accent/50 bg-accent/10"
+                  : "border-hairline bg-raise"
+              )}
+            >
+              {isUploading ? (
+                <Loader2 className="size-5 animate-spin text-accent" aria-hidden="true" />
+              ) : (
+                <UploadCloud
+                  className={cn(
+                    "size-5 transition-colors duration-200",
+                    isDragging ? "text-accent" : "text-soft"
+                  )}
+                  aria-hidden="true"
+                />
+              )}
+            </div>
+            <div>
+              <p className="text-sm font-medium text-strong">
+                {isUploading
+                  ? "Parsing your resume…"
+                  : isDragging
+                    ? "Drop to upload"
+                    : "Upload your resume"}
+              </p>
+              <p className="mt-1 text-xs text-faint">
+                Drag &amp; drop or click — PDF or DOCX, up to {MAX_SIZE_MB}MB
               </p>
             </div>
-          </div>
-          {resume.parsedRole && (
-            <p className="text-xs text-light-400">
-              Role detected: <span className="text-white">{resume.parsedRole}</span>
-            </p>
-          )}
-          {resume.parsedSkills.length > 0 && (
-            <p className="text-xs text-light-400 line-clamp-1">
-              Skills: <span className="text-white">{resume.parsedSkills.slice(0, 5).join(", ")}{resume.parsedSkills.length > 5 ? ` +${resume.parsedSkills.length - 5} more` : ""}</span>
-            </p>
-          )}
-        </div>
-      ) : (
-        <button
-          type="button"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={isUploading}
-          className="w-full border border-dashed border-dark-300 rounded-lg p-6 flex flex-col items-center gap-2 hover:border-primary-200 hover:bg-dark-200/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {isUploading ? (
-            <Loader2 className="h-8 w-8 text-primary-200 animate-spin" />
-          ) : (
-            <Upload className="h-8 w-8 text-light-400" />
-          )}
-          <span className="text-sm text-light-400">
-            {isUploading ? "Processing resume..." : "Upload PDF or DOCX (max 5MB)"}
-          </span>
-        </button>
-      )}
-
-      {isUploading && resume && (
-        <div className="mt-3 flex items-center gap-2 text-xs text-light-400">
-          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          Uploading new resume...
-        </div>
-      )}
+          </motion.button>
+        )}
+      </AnimatePresence>
 
       <input
         ref={fileInputRef}
@@ -144,6 +249,7 @@ const ResumeUploadSection = ({ userId, initialResume }: ResumeUploadSectionProps
         accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         className="hidden"
         onChange={handleFileChange}
+        aria-label="Upload resume file"
       />
     </div>
   );

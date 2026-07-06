@@ -14,6 +14,7 @@ import {
 export const dynamic = "force-dynamic";
 
 import InterviewCard from "@/components/InterviewCard";
+import Reveal from "@/components/motion/Reveal";
 import Pagination from "@/components/Pagination";
 import GenerateInterviewButton from "@/components/GenerateInterviewButton";
 import ResumeUploadSection from "@/components/resume/ResumeUploadSection";
@@ -94,12 +95,12 @@ async function LandingPage() {
     <div className="flex flex-col">
       {/* Hero */}
       <section className="hero-glow -mx-6 px-6">
-        <div className="mx-auto flex max-w-3xl flex-col items-center pb-24 pt-28 text-center max-sm:pb-16 max-sm:pt-20">
+        <Reveal className="mx-auto flex max-w-3xl flex-col items-center pb-24 pt-28 text-center max-sm:pb-16 max-sm:pt-20">
           <span className="eyebrow">AI-powered interview practice</span>
           <h1 className="display mt-5 text-5xl leading-[1.08] sm:text-6xl">
             Interview like it&apos;s the real thing.
           </h1>
-          <p className="mt-6 max-w-xl text-lg leading-relaxed text-zinc-400">
+          <p className="mt-6 max-w-xl text-lg leading-relaxed text-soft">
             Practice live voice interviews with an AI interviewer, get instant
             data-backed feedback, and walk into your next interview prepared.
           </p>
@@ -112,8 +113,8 @@ async function LandingPage() {
             </Link>
           </div>
           {totalInterviewCount > 0 && (
-            <p className="mt-10 text-sm text-zinc-500">
-              <span className="font-semibold text-white">
+            <p className="mt-10 text-sm text-faint">
+              <span className="font-semibold text-strong">
                 <CountUp
                   from={0}
                   to={totalInterviewCount}
@@ -126,57 +127,59 @@ async function LandingPage() {
               interviews created by the community
             </p>
           )}
-        </div>
+        </Reveal>
       </section>
 
       {/* Features */}
       <section className="py-20 max-sm:py-14" aria-labelledby="features-heading">
-        <div className="mx-auto max-w-2xl text-center">
+        <Reveal className="mx-auto max-w-2xl text-center">
           <h2 id="features-heading" className="display text-3xl sm:text-4xl">
             Everything you need to prepare.
           </h2>
-          <p className="mt-4 text-zinc-400">
+          <p className="mt-4 text-soft">
             One focused tool for realistic practice — not another question bank.
           </p>
-        </div>
+        </Reveal>
 
         <div className="mt-12 grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {features.map(({ icon: Icon, title, description }) => (
-            <div key={title} className="panel p-7">
-              <div className="flex size-11 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.04]">
+          {features.map(({ icon: Icon, title, description }, index) => (
+            <Reveal key={title} delay={index * 0.07} className="panel p-7">
+              <div className="flex size-11 items-center justify-center rounded-xl border border-hairline bg-raise">
                 <Icon className="size-5 text-accent" aria-hidden="true" />
               </div>
-              <h3 className="mt-5 text-lg font-semibold tracking-tight text-white">
+              <h3 className="mt-5 text-lg font-semibold tracking-tight text-strong">
                 {title}
               </h3>
-              <p className="mt-2 text-[15px] leading-relaxed text-zinc-400">
+              <p className="mt-2 text-[15px] leading-relaxed text-soft">
                 {description}
               </p>
-            </div>
+            </Reveal>
           ))}
         </div>
       </section>
 
       {/* How it works */}
       <section className="py-20 max-sm:py-14" aria-labelledby="steps-heading">
-        <div className="mx-auto max-w-2xl text-center">
+        <Reveal className="mx-auto max-w-2xl text-center">
           <h2 id="steps-heading" className="display text-3xl sm:text-4xl">
             Three steps to your best interview.
           </h2>
-        </div>
+        </Reveal>
 
         <ol className="mt-12 grid list-none grid-cols-1 gap-4 md:grid-cols-3">
-          {steps.map(({ step, title, description }) => (
-            <li key={step} className="panel p-7">
-              <span className="text-sm font-semibold tracking-widest text-accent">
-                {step}
-              </span>
-              <h3 className="mt-4 text-lg font-semibold tracking-tight text-white">
-                {title}
-              </h3>
-              <p className="mt-2 text-[15px] leading-relaxed text-zinc-400">
-                {description}
-              </p>
+          {steps.map(({ step, title, description }, index) => (
+            <li key={step}>
+              <Reveal delay={index * 0.09} className="panel h-full p-7">
+                <span className="text-sm font-semibold tracking-widest text-accent">
+                  {step}
+                </span>
+                <h3 className="mt-4 text-lg font-semibold tracking-tight text-strong">
+                  {title}
+                </h3>
+                <p className="mt-2 text-[15px] leading-relaxed text-soft">
+                  {description}
+                </p>
+              </Reveal>
             </li>
           ))}
         </ol>
@@ -184,7 +187,7 @@ async function LandingPage() {
 
       {/* Final CTA */}
       <section className="pb-24 pt-8 max-sm:pb-16">
-        <div className="panel flex flex-col items-center gap-6 overflow-hidden px-8 py-14 text-center">
+        <Reveal className="panel flex flex-col items-center gap-6 overflow-hidden px-8 py-14 text-center">
           <Image
             src="/fox_on_computer.png"
             alt="Hired Fox mascot practicing at a computer"
@@ -195,14 +198,14 @@ async function LandingPage() {
           <h2 className="display text-3xl sm:text-4xl">
             Your next offer starts with practice.
           </h2>
-          <p className="max-w-md text-zinc-400">
+          <p className="max-w-md text-soft">
             Create your first mock interview in under a minute. Free to start.
           </p>
           <Link href="/sign-up" className="btn-accent">
             Get started
             <ArrowRight className="size-4" aria-hidden="true" />
           </Link>
-        </div>
+        </Reveal>
       </section>
     </div>
   );
@@ -266,7 +269,7 @@ async function Dashboard({
           <h1 className="display text-3xl sm:text-4xl">
             {firstName ? `Welcome back, ${firstName}.` : "Welcome back."}
           </h1>
-          <p className="mt-2 text-zinc-400">
+          <p className="mt-2 text-soft">
             Pick up where you left off, or start a new practice session.
           </p>
         </div>
@@ -282,7 +285,7 @@ async function Dashboard({
         <h2 id="resume-heading" className="display text-xl">
           Your resume
         </h2>
-        <p className="mt-1 text-sm text-zinc-500">
+        <p className="mt-1 text-sm text-faint">
           Used to tailor interview questions to your background.
         </p>
         <div className="mt-4 max-w-md">
@@ -297,12 +300,12 @@ async function Dashboard({
             <h2 id="my-interviews-heading" className="display text-xl">
               Your interviews
             </h2>
-            <p className="mt-1 text-sm text-zinc-500">
+            <p className="mt-1 text-sm text-faint">
               Interviews you created or completed.
             </p>
           </div>
           {myTotal > 0 && (
-            <span className="text-sm text-zinc-500">{myTotal} total</span>
+            <span className="text-sm text-faint">{myTotal} total</span>
           )}
         </div>
 
@@ -338,12 +341,12 @@ async function Dashboard({
           </>
         ) : (
           <div className="panel mt-6 flex flex-col items-center gap-4 px-8 py-14 text-center">
-            <div className="flex size-12 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.04]">
-              <Plus className="size-5 text-zinc-400" aria-hidden="true" />
+            <div className="flex size-12 items-center justify-center rounded-full border border-hairline bg-raise">
+              <Plus className="size-5 text-soft" aria-hidden="true" />
             </div>
             <div>
-              <p className="font-medium text-white">No interviews yet</p>
-              <p className="mt-1 text-sm text-zinc-500">
+              <p className="font-medium text-strong">No interviews yet</p>
+              <p className="mt-1 text-sm text-faint">
                 Generate your first interview to start practicing.
               </p>
             </div>
@@ -361,12 +364,12 @@ async function Dashboard({
             <h2 id="discover-heading" className="display text-xl">
               Discover interviews
             </h2>
-            <p className="mt-1 text-sm text-zinc-500">
+            <p className="mt-1 text-sm text-faint">
               Interviews created by the community, ready to take.
             </p>
           </div>
           {discoverTotal > 0 && (
-            <span className="text-sm text-zinc-500">
+            <span className="text-sm text-faint">
               {discoverTotal} available
             </span>
           )}
@@ -401,7 +404,7 @@ async function Dashboard({
           </>
         ) : (
           <div className="panel mt-6 px-8 py-12 text-center">
-            <p className="text-sm text-zinc-500">
+            <p className="text-sm text-faint">
               No new community interviews right now. Check back soon.
             </p>
           </div>

@@ -21,15 +21,15 @@ const InterviewSuccessModal = ({
 }: InterviewSuccessModalProps) => {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="rounded-2xl border-white/[0.1] bg-surface-overlay sm:max-w-md">
+      <DialogContent className="rounded-2xl border-hairline bg-surface-overlay sm:max-w-md">
         <DialogHeader>
           <div className="flex size-11 items-center justify-center rounded-full border border-emerald-500/25 bg-emerald-500/10">
-            <CheckCircle2 className="size-5 text-emerald-400" aria-hidden="true" />
+            <CheckCircle2 className="size-5 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
           </div>
-          <DialogTitle className="pt-3 text-xl font-semibold tracking-tight text-white">
+          <DialogTitle className="pt-3 text-xl font-semibold tracking-tight text-strong">
             Interview ready
           </DialogTitle>
-          <DialogDescription className="pt-1 leading-relaxed text-zinc-400">
+          <DialogDescription className="pt-1 leading-relaxed text-soft">
             Your interview has been created. Take it now to get instant,
             data-backed feedback.
           </DialogDescription>

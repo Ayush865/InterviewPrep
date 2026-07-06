@@ -2,7 +2,9 @@
 
 import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
-import { ChevronDown, Search, X } from "lucide-react";
+import { ChevronDown, Search, X, Check } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
+import { cn } from "@/lib/utils";
 import { interviewCompanies, companyToLogo } from "@/constants";
 
 interface CompanySelectProps {
@@ -50,91 +52,122 @@ const CompanySelect = ({ value, onChange }: CompanySelectProps) => {
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
-        className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-md bg-dark-200 border border-dark-200 text-sm hover:border-primary-200/50 transition-colors"
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        className="field-trigger flex cursor-pointer items-center justify-between gap-2"
       >
-        <span className="flex items-center gap-2 min-w-0">
+        <span className="flex min-w-0 items-center gap-2.5">
           {selected ? (
             <>
               <Image
                 src={companyToLogo[selected.value]}
-                alt={selected.label}
+                alt=""
                 width={18}
                 height={18}
-                className="object-contain shrink-0"
+                className="shrink-0 object-contain"
               />
               <span className="truncate">{selected.label}</span>
             </>
           ) : (
-            <span className="text-light-400">No specific company</span>
+            <span className="text-faint">No specific company</span>
           )}
         </span>
-        <span className="flex items-center gap-1 shrink-0">
+        <span className="flex shrink-0 items-center gap-1">
           {selected && (
             <span
               role="button"
+              aria-label="Clear company"
               onClick={handleClear}
-              className="p-0.5 rounded hover:bg-dark-300"
+              className="rounded-full p-1 transition-colors duration-200 hover:bg-hover"
             >
-              <X className="h-3.5 w-3.5 text-light-400" />
+              <X className="size-3.5 text-faint" aria-hidden="true" />
             </span>
           )}
-          <ChevronDown className={`h-4 w-4 text-light-400 transition-transform ${open ? "rotate-180" : ""}`} />
+          <ChevronDown
+            className={`size-4 text-faint transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+            aria-hidden="true"
+          />
         </span>
       </button>
 
       {/* Dropdown */}
-      {open && (
-        <div className="absolute z-50 mt-1 w-full rounded-md bg-dark-200 border border-dark-300 shadow-lg">
-          {/* Search */}
-          <div className="flex items-center gap-2 px-3 py-2 border-b border-dark-300">
-            <Search className="h-3.5 w-3.5 text-light-400 shrink-0" />
-            <input
-              autoFocus
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search company..."
-              className="flex-1 bg-transparent text-sm outline-none placeholder:text-light-400"
-            />
-          </div>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -4, scale: 0.99 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -4, scale: 0.99 }}
+            transition={{ duration: 0.15 }}
+            className="absolute z-50 mt-2 w-full overflow-hidden rounded-xl border border-hairline bg-surface-overlay shadow-xl shadow-black/10 dark:shadow-black/40"
+          >
+            {/* Search */}
+            <div className="flex items-center gap-2.5 border-b border-hairline px-4 py-3">
+              <Search className="size-4 shrink-0 text-faint" aria-hidden="true" />
+              <input
+                autoFocus
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search company…"
+                aria-label="Search company"
+                className="flex-1 bg-transparent text-sm text-strong outline-none placeholder:text-faint"
+              />
+            </div>
 
-          {/* Options */}
-          <ul className="max-h-52 overflow-y-auto py-1">
-            {/* No company option */}
-            <li>
-              <button
-                type="button"
-                onClick={() => { onChange(undefined); setOpen(false); setSearch(""); }}
-                className={`w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-dark-300 transition-colors ${!value ? "text-primary-200" : "text-light-400"}`}
-              >
-                No specific company
-              </button>
-            </li>
+            {/* Options */}
+            <ul role="listbox" className="max-h-56 overflow-y-auto p-1.5">
+              <li>
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={!value}
+                  onClick={() => {
+                    onChange(undefined);
+                    setOpen(false);
+                    setSearch("");
+                  }}
+                  className={cn(
+                    "flex w-full cursor-pointer items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm transition-colors duration-150 hover:bg-hover",
+                    !value ? "text-strong" : "text-soft"
+                  )}
+                >
+                  No specific company
+                  {!value && <Check className="size-4 text-accent" aria-hidden="true" />}
+                </button>
+              </li>
 
-            {filtered.length === 0 ? (
-              <li className="px-3 py-2 text-sm text-light-400">No results</li>
-            ) : (
-              filtered.map((company) => (
-                <li key={company.value}>
-                  <button
-                    type="button"
-                    onClick={() => handleSelect(company.value)}
-                    className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm hover:bg-dark-300 transition-colors ${value === company.value ? "text-primary-200" : "text-white"}`}
-                  >
-                    <Image
-                      src={companyToLogo[company.value]}
-                      alt={company.label}
-                      width={18}
-                      height={18}
-                      className="object-contain shrink-0"
-                    />
-                    {company.label}
-                  </button>
-                </li>
-              ))
-            )}
-          </ul>
-        </div>
-      )}
+              {filtered.length === 0 ? (
+                <li className="px-3 py-2 text-sm text-faint">No results</li>
+              ) : (
+                filtered.map((company) => (
+                  <li key={company.value}>
+                    <button
+                      type="button"
+                      role="option"
+                      aria-selected={value === company.value}
+                      onClick={() => handleSelect(company.value)}
+                      className={cn(
+                        "flex w-full cursor-pointer items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-strong transition-colors duration-150 hover:bg-hover"
+                      )}
+                    >
+                      <Image
+                        src={companyToLogo[company.value]}
+                        alt=""
+                        width={18}
+                        height={18}
+                        className="shrink-0 object-contain"
+                      />
+                      <span className="flex-1 text-left">{company.label}</span>
+                      {value === company.value && (
+                        <Check className="size-4 text-accent" aria-hidden="true" />
+                      )}
+                    </button>
+                  </li>
+                ))
+              )}
+            </ul>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

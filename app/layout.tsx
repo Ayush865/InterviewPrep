@@ -2,6 +2,7 @@ import { Toaster } from "sonner";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
+import { ThemeProvider } from "next-themes";
 
 import "./globals.css";
 
@@ -24,11 +25,18 @@ export default function RootLayout({
 }>) {
   return (
     <ClerkProvider>
-      <html lang="en" className="dark">
+      <html lang="en" suppressHydrationWarning>
         <body className={`${inter.variable} font-sans`}>
-          {children}
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="dark"
+            enableSystem={false}
+            disableTransitionOnChange
+          >
+            {children}
 
-          <Toaster theme="dark" position="bottom-right" />
+            <Toaster position="bottom-right" />
+          </ThemeProvider>
         </body>
       </html>
     </ClerkProvider>

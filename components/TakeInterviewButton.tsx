@@ -13,7 +13,7 @@ interface TakeInterviewButtonProps {
 }
 
 const buttonClass =
-  "inline-flex h-9 cursor-pointer items-center justify-center rounded-full border border-white/[0.14] px-4 text-sm font-medium text-white transition-colors duration-200 hover:border-accent/60 hover:bg-accent/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent";
+  "inline-flex h-9 cursor-pointer items-center justify-center rounded-full border border-hairline-strong px-4 text-sm font-medium text-strong transition-colors duration-200 hover:border-accent/60 hover:bg-accent/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent";
 
 const TakeInterviewButton = ({
   isPremium,

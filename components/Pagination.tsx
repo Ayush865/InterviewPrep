@@ -33,7 +33,7 @@ const Pagination = ({ page, totalPages, hrefForPage }: PaginationProps) => {
   if (totalPages <= 1) return null;
 
   const linkClass =
-    "inline-flex size-9 items-center justify-center rounded-full text-sm text-zinc-400 transition-colors duration-200 hover:bg-white/[0.06] hover:text-white";
+    "inline-flex size-9 items-center justify-center rounded-full text-sm text-soft transition-colors duration-200 hover:bg-hover hover:text-strong";
 
   return (
     <nav aria-label="Pagination" className="flex items-center justify-center gap-1">
@@ -49,7 +49,7 @@ const Pagination = ({ page, totalPages, hrefForPage }: PaginationProps) => {
 
       {pageItems(page, totalPages).map((item, index) =>
         item === "…" ? (
-          <span key={`gap-${index}`} className="px-1 text-sm text-zinc-600">
+          <span key={`gap-${index}`} className="px-1 text-sm text-faint">
             …
           </span>
         ) : (
@@ -59,7 +59,7 @@ const Pagination = ({ page, totalPages, hrefForPage }: PaginationProps) => {
             aria-current={item === page ? "page" : undefined}
             className={cn(
               linkClass,
-              item === page && "bg-white text-black hover:bg-white hover:text-black"
+              item === page && "bg-[var(--cta-bg)] text-[var(--cta-fg)] hover:bg-[var(--cta-bg)] hover:text-[var(--cta-fg)]"
             )}
           >
             {item}
