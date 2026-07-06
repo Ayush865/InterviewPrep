@@ -1,11 +1,10 @@
-import Image from "next/image";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { currentUser } from "@clerk/nextjs/server";
 import { Settings, Sparkles } from "lucide-react";
 
-import Agent from "@/components/Agent";
 import DisplayTechIcons from "@/components/DisplayTechIcons";
+import InterviewSession from "@/components/interview/InterviewSession";
 import {
   getFeedbackByInterviewId,
   getInterviewById,
@@ -71,49 +70,20 @@ const InterviewDetails = async ({ params }: RouteParams) => {
   }
 
   return (
-    <div className="mx-auto w-full max-w-3xl pb-24 pt-12 max-sm:pt-8">
-      {/* Interview header */}
-      <header className="panel flex items-center justify-between gap-4 p-5 max-sm:flex-col max-sm:items-start">
-        <div className="flex items-center gap-4">
-          <div className="flex size-12 shrink-0 items-center justify-center rounded-xl border border-hairline bg-raise p-2">
-            <Image
-              src={interview.coverImage || "/covers/Amazon.svg"}
-              alt=""
-              width={40}
-              height={40}
-              className="size-8 object-contain"
-            />
-          </div>
-          <div>
-            <h1 className="text-lg font-semibold capitalize tracking-tight text-strong">
-              {interview.role} Interview
-            </h1>
-            <p className="text-sm capitalize text-faint">
-              {interview.level} · {interview.questions.length} questions
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <DisplayTechIcons techStack={interview.techstack} />
-          <span className="inline-flex items-center rounded-full border border-hairline bg-raise px-3 py-1 text-xs font-medium capitalize text-body">
-            {interview.type}
-          </span>
-        </div>
-      </header>
-
-      <div className="mt-8">
-        <Agent
-          userName={clerkUser.firstName || clerkUser.username || "User"}
-          userId={clerkUser.id}
-          userImage={clerkUser.imageUrl}
-          interviewId={id}
-          type="interview"
-          questions={interview.questions}
-          feedbackId={feedback?.id}
-        />
-      </div>
-    </div>
+    <InterviewSession
+      interviewId={id}
+      role={interview.role}
+      type={interview.type}
+      level={interview.level}
+      coverImage={interview.coverImage || null}
+      questionCount={interview.questions.length}
+      questions={interview.questions}
+      feedbackId={feedback?.id}
+      userName={clerkUser.firstName || clerkUser.username || "User"}
+      userId={clerkUser.id}
+      userImage={clerkUser.imageUrl}
+      techIcons={<DisplayTechIcons techStack={interview.techstack} />}
+    />
   );
 };
 

@@ -40,7 +40,7 @@ const InterviewCard = ({
   ).format("MMM D, YYYY");
 
   return (
-    <article className="panel panel-hover group relative flex h-full flex-col p-6">
+    <article className="panel panel-hover relative flex h-full flex-col p-6">
       <div className="flex items-start justify-between gap-3">
         <div className="flex size-12 items-center justify-center rounded-xl border border-hairline bg-raise p-2">
           <Image

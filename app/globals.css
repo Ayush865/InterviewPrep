@@ -395,21 +395,6 @@
     @apply h-1.5 text-[5px] font-bold bg-primary-200 rounded-full flex-center;
   }
 
-  .tech-tooltip {
-    @apply absolute bottom-full mb-1 px-2 py-1 text-xs text-white bg-gray-700 rounded-md shadow-md whitespace-nowrap max-w-xs z-50;
-    opacity: 0;
-    transform: translateY(5px);
-    transition: opacity 0.2s ease, transform 0.2s ease;
-    pointer-events: none;
-    display: flex;
-  }
-
-  .group:hover .tech-tooltip {
-    opacity: 1;
-    transform: translateY(0);
-    pointer-events: auto;
-  }
-
   .icon-spread-group:hover > div:not(:first-child) {
     margin-left: 0.5rem;
   }
