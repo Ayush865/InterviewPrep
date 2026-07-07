@@ -42,7 +42,7 @@ const GenerateInterviewButton = ({
         messageLine1={
           plan === "pro"
             ? "You've used all 10 interview generations for this billing period."
-            : "You have reached the free plan limit of 1 interview generation."
+            : "You've reached your interview generation limit."
         }
         messageLine2={
           plan === "pro"

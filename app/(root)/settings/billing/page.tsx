@@ -185,11 +185,18 @@ export default async function BillingPage({
             label={
               entitlements.plan === "pro"
                 ? "Interview generations this period"
-                : "Interview generations"
+                : "Interview generations (form)"
             }
             used={entitlements.generationsUsed}
             limit={entitlements.generationsLimit}
           />
+          {entitlements.callGenerationsLimit !== null && (
+            <UsageMeter
+              label="Hiring-manager call generations"
+              used={entitlements.callGenerationsUsed}
+              limit={entitlements.callGenerationsLimit}
+            />
+          )}
           <UsageMeter
             label={
               entitlements.plan === "pro"

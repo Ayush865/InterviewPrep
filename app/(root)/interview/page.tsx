@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Phone, ArrowRight } from "lucide-react";
+import { Phone, ArrowRight, Lock } from "lucide-react";
 
 import InterviewForm from "@/components/interview/InterviewForm";
 import {
@@ -12,12 +12,19 @@ import {
 import { useGenerationGate } from "@/hooks/useGenerationGate";
 
 const Page = () => {
-  const { user, isLoaded, loading, resumeData, limitReached, plan } =
-    useGenerationGate();
+  const {
+    user,
+    isLoaded,
+    loading,
+    resumeData,
+    plan,
+    canGenerateForm,
+    canGenerateCall,
+  } = useGenerationGate();
 
   if (!isLoaded || loading) return <GateLoading />;
   if (!user?.id) return <GateAuthRequired />;
-  if (limitReached) return <GateLimitReached plan={plan} />;
+  if (!canGenerateForm) return <GateLimitReached plan={plan} context="form" />;
 
   return (
     <div className="mx-auto w-full max-w-xl pb-24 pt-12 max-sm:pt-8">
@@ -29,26 +36,42 @@ const Page = () => {
       </header>
 
       {/* Alternative: voice-based generation */}
-      <Link
-        href="/interview/call"
-        className="panel panel-hover group mt-8 flex items-center gap-4 p-4"
-      >
-        <div className="flex size-11 shrink-0 items-center justify-center rounded-full border border-accent/25 bg-accent/10">
-          <Phone className="size-5 text-accent" aria-hidden="true" />
+      {canGenerateCall ? (
+        <Link
+          href="/interview/call"
+          className="panel panel-hover group mt-8 flex items-center gap-4 p-4"
+        >
+          <div className="flex size-11 shrink-0 items-center justify-center rounded-full border border-accent/25 bg-accent/10">
+            <Phone className="size-5 text-accent" aria-hidden="true" />
+          </div>
+          <div className="flex-1">
+            <p className="font-medium text-strong">
+              Prefer to talk it through?
+            </p>
+            <p className="text-sm text-faint">
+              Describe your interview to our AI hiring manager on a call.
+            </p>
+          </div>
+          <ArrowRight
+            className="size-5 text-faint transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-strong"
+            aria-hidden="true"
+          />
+        </Link>
+      ) : (
+        <div className="panel mt-8 flex items-center gap-4 p-4 opacity-70">
+          <div className="flex size-11 shrink-0 items-center justify-center rounded-full border border-hairline bg-raise">
+            <Lock className="size-5 text-faint" aria-hidden="true" />
+          </div>
+          <div className="flex-1">
+            <p className="font-medium text-strong">Hiring-manager call used</p>
+            <p className="text-sm text-faint">
+              {plan === "free"
+                ? "The free plan includes 1 call generation. The form below is unlimited."
+                : "Your quota for this period is used up. Upgrade or wait for renewal."}
+            </p>
+          </div>
         </div>
-        <div className="flex-1">
-          <p className="font-medium text-strong">
-            Prefer to talk it through?
-          </p>
-          <p className="text-sm text-faint">
-            Describe your interview to our AI hiring manager on a call.
-          </p>
-        </div>
-        <ArrowRight
-          className="size-5 text-faint transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-strong"
-          aria-hidden="true"
-        />
-      </Link>
+      )}
 
       <div className="mt-8">
         <InterviewForm userId={user.id} resumeData={resumeData} />

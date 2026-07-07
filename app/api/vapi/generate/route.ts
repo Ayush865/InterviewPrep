@@ -27,19 +27,24 @@ export async function POST(request: Request) {
     logger.info("=== VAPI GENERATE DEBUG ===");
     logger.info("Full request body:", JSON.stringify(body, null, 2));
 
-    // Handle both Vapi function call format and direct parameters
+    // Handle both Vapi function call format and direct parameters.
+    // The format also tells us the generation method: Vapi function calls
+    // come from the hiring-manager call, direct params from the form.
     let type, role, level, techstack, amount, userid, company_name, use_resume;
+    let generationMethod: "form" | "call";
 
     if (body.message?.functionCall?.parameters) {
       // Vapi function call format
       const params = body.message.functionCall.parameters;
       logger.info("Function call parameters:", JSON.stringify(params, null, 2));
       ({ type, role, level, techstack, amount, userid, company_name, use_resume } = params);
-      logger.info("Extracted from Vapi function call format");
+      generationMethod = "call";
+      logger.info("Extracted from Vapi function call format (call generation)");
     } else {
       // Direct parameters format
       ({ type, role, level, techstack, amount, userid, company_name, use_resume } = body);
-      logger.info("Using direct parameters format");
+      generationMethod = "form";
+      logger.info("Using direct parameters format (form generation)");
     }
 
     logger.info("=== EXTRACTED VALUES ===");
@@ -85,33 +90,41 @@ export async function POST(request: Request) {
       }
     }
 
-    // Plan-based generation limit (free: 1 total, pro: 10/period, byok: unlimited)
+    // Plan- and method-based generation limits:
+    //   free: form unlimited, hiring-manager call limited to 1
+    //   pro:  10/period (any method) — byok: unlimited
     const entitlements = await getUserEntitlements(userid);
 
     logger.info(`[User Check] User ${userid} entitlements`, {
       plan: entitlements.plan,
+      method: generationMethod,
       generationsUsed: entitlements.generationsUsed,
       generationsLimit: entitlements.generationsLimit,
+      callGenerationsUsed: entitlements.callGenerationsUsed,
+      callGenerationsLimit: entitlements.callGenerationsLimit,
     });
 
-    if (!entitlements.canGenerate) {
-      logger.warn(
-        `[Limit] User ${userid} reached generation limit`,
-        {
-          plan: entitlements.plan,
-          used: entitlements.generationsUsed,
-          limit: entitlements.generationsLimit,
-        }
-      );
+    const allowed =
+      generationMethod === "call"
+        ? entitlements.canGenerateCall
+        : entitlements.canGenerateForm;
+
+    if (!allowed) {
+      logger.warn(`[Limit] User ${userid} reached generation limit`, {
+        plan: entitlements.plan,
+        method: generationMethod,
+        used:
+          generationMethod === "call" && entitlements.plan === "free"
+            ? entitlements.callGenerationsUsed
+            : entitlements.generationsUsed,
+      });
       const byokHint = isVapiByokEnabled()
-        ? entitlements.plan === "pro"
-          ? " or connect your own Vapi key for unlimited access"
-          : " or connect your own Vapi key"
+        ? " or connect your own Vapi key for unlimited access"
         : "";
       const error =
         entitlements.plan === "pro"
           ? `You've used all ${entitlements.generationsLimit} interview generations for this billing period. Your quota resets on renewal${byokHint}.`
-          : `Free plan limit reached. You can only generate 1 interview. Upgrade to Pro${byokHint}.`;
+          : `Free plan limit reached: the hiring-manager call includes ${entitlements.callGenerationsLimit} interview generation. Use the form for unlimited generations, upgrade to Pro${byokHint}.`;
       return Response.json(
         { success: false, error },
         { status: 403, headers: corsHeaders }
@@ -200,6 +213,7 @@ ${resumeData.raw_text.substring(0, 6000)}
       finalized: true,
       cover_image: getLogoForCompany(company_name),
       company_name: company_name || null,
+      generation_method: generationMethod,
     });
 
     logger.info(`[Interview] Created interview ${interview.id} for user ${userid}`);

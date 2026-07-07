@@ -7,11 +7,12 @@ import {
   getUserCounts,
   countInterviewsCreatedSince,
   countFeedbacksCreatedSince,
+  countCallGenerations,
 } from "@/lib/db-queries";
 import { hasUserVapiCredentials } from "@/lib/actions/vapi.action";
 import {
   type Entitlements,
-  FREE_GENERATIONS_TOTAL,
+  FREE_CALL_GENERATIONS_TOTAL,
   FREE_SESSIONS_TOTAL,
   PRO_GENERATIONS_PER_PERIOD,
   PRO_SESSIONS_PER_PERIOD,
@@ -33,7 +34,7 @@ export async function getUserFeedbackCount(userId: string): Promise<number> {
 /**
  * Whether the user has an active Pro subscription (or a legacy manual
  * premium flag). Subscription expiry is checked against the DB record,
- * which the Stripe webhook keeps in sync.
+ * which the payment-provider webhook keeps in sync.
  */
 export async function getUserPremiumStatus(userId: string): Promise<boolean> {
   try {
@@ -47,7 +48,7 @@ export async function getUserPremiumStatus(userId: string): Promise<boolean> {
       return active;
     }
 
-    // Legacy: manually flagged premium users without a Stripe record
+    // Legacy: manually flagged premium users without a subscription record
     const user = await getUserById(userId);
     return Boolean(user?.premium_user);
   } catch (error) {
@@ -56,12 +57,38 @@ export async function getUserPremiumStatus(userId: string): Promise<boolean> {
   }
 }
 
+/** Pro entitlements for a given usage snapshot */
+function proEntitlements(
+  generationsUsed: number,
+  sessionsUsed: number,
+  periodEnd: string | null,
+  cancelAtPeriodEnd: boolean
+): Entitlements {
+  const canGenerate = generationsUsed < PRO_GENERATIONS_PER_PERIOD;
+  return {
+    plan: "pro",
+    isPremium: true,
+    canGenerateForm: canGenerate,
+    canGenerateCall: canGenerate,
+    canPractice: sessionsUsed < PRO_SESSIONS_PER_PERIOD,
+    generationsUsed,
+    generationsLimit: PRO_GENERATIONS_PER_PERIOD,
+    callGenerationsUsed: 0,
+    callGenerationsLimit: null, // calls count within the shared quota
+    sessionsUsed,
+    sessionsLimit: PRO_SESSIONS_PER_PERIOD,
+    periodEnd,
+    cancelAtPeriodEnd,
+  };
+}
+
 /**
  * Single source of truth for what a user is allowed to do.
  *
  *  - byok:  own Vapi credentials — unlimited
- *  - pro:   10 generations + 10 practice sessions per billing period
- *  - free:  1 generation + 1 practice session, total
+ *  - pro:   10 generations (any method) + 10 practice sessions per period
+ *  - free:  unlimited form generations, 1 hiring-manager call generation,
+ *           1 practice session (lifetime)
  */
 export async function getUserEntitlements(
   userId: string
@@ -69,26 +96,30 @@ export async function getUserEntitlements(
   const unlimited: Entitlements = {
     plan: "byok",
     isPremium: false,
-    canGenerate: true,
+    canGenerateForm: true,
+    canGenerateCall: true,
     canPractice: true,
     generationsUsed: 0,
     generationsLimit: null,
+    callGenerationsUsed: 0,
+    callGenerationsLimit: null,
     sessionsUsed: 0,
     sessionsLimit: null,
     periodEnd: null,
     cancelAtPeriodEnd: false,
   };
 
-  if (!userId) {
-    return {
-      ...unlimited,
-      plan: "free",
-      canGenerate: false,
-      canPractice: false,
-      generationsLimit: FREE_GENERATIONS_TOTAL,
-      sessionsLimit: FREE_SESSIONS_TOTAL,
-    };
-  }
+  const lockedFree: Entitlements = {
+    ...unlimited,
+    plan: "free",
+    canGenerateForm: false,
+    canGenerateCall: false,
+    canPractice: false,
+    callGenerationsLimit: FREE_CALL_GENERATIONS_TOTAL,
+    sessionsLimit: FREE_SESSIONS_TOTAL,
+  };
+
+  if (!userId) return lockedFree;
 
   try {
     const [hasByok, subscription] = await Promise.all([
@@ -115,22 +146,16 @@ export async function getUserEntitlements(
         countFeedbacksCreatedSince(userId, periodStart),
       ]);
 
-      return {
-        plan: "pro",
-        isPremium: true,
-        canGenerate: generationsUsed < PRO_GENERATIONS_PER_PERIOD,
-        canPractice: sessionsUsed < PRO_SESSIONS_PER_PERIOD,
+      return proEntitlements(
         generationsUsed,
-        generationsLimit: PRO_GENERATIONS_PER_PERIOD,
         sessionsUsed,
-        sessionsLimit: PRO_SESSIONS_PER_PERIOD,
-        periodEnd: subscription!.current_period_end!.toISOString(),
-        cancelAtPeriodEnd: subscription!.cancel_at_period_end,
-      };
+        subscription!.current_period_end!.toISOString(),
+        subscription!.cancel_at_period_end
+      );
     }
 
-    // Legacy manual premium flag (no Stripe record): treat as pro with
-    // usage measured over the last 30 days
+    // Legacy manual premium flag (no subscription record): treat as pro
+    // with usage measured over the last 30 days
     const user = await getUserById(userId);
     if (Boolean(user?.premium_user) && !subscription) {
       const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
@@ -139,30 +164,26 @@ export async function getUserEntitlements(
         countFeedbacksCreatedSince(userId, thirtyDaysAgo),
       ]);
 
-      return {
-        plan: "pro",
-        isPremium: true,
-        canGenerate: generationsUsed < PRO_GENERATIONS_PER_PERIOD,
-        canPractice: sessionsUsed < PRO_SESSIONS_PER_PERIOD,
-        generationsUsed,
-        generationsLimit: PRO_GENERATIONS_PER_PERIOD,
-        sessionsUsed,
-        sessionsLimit: PRO_SESSIONS_PER_PERIOD,
-        periodEnd: null,
-        cancelAtPeriodEnd: false,
-      };
+      return proEntitlements(generationsUsed, sessionsUsed, null, false);
     }
 
-    // Free plan: lifetime totals
-    const counts = await getUserCounts(userId);
+    // Free plan: form generation is unlimited; the hiring-manager call
+    // and practice sessions are limited (lifetime)
+    const [counts, callGenerationsUsed] = await Promise.all([
+      getUserCounts(userId),
+      countCallGenerations(userId),
+    ]);
 
     return {
       plan: "free",
       isPremium: false,
-      canGenerate: counts.interviewCount < FREE_GENERATIONS_TOTAL,
+      canGenerateForm: true,
+      canGenerateCall: callGenerationsUsed < FREE_CALL_GENERATIONS_TOTAL,
       canPractice: counts.feedbackCount < FREE_SESSIONS_TOTAL,
       generationsUsed: counts.interviewCount,
-      generationsLimit: FREE_GENERATIONS_TOTAL,
+      generationsLimit: null, // form generation is unlimited
+      callGenerationsUsed,
+      callGenerationsLimit: FREE_CALL_GENERATIONS_TOTAL,
       sessionsUsed: counts.feedbackCount,
       sessionsLimit: FREE_SESSIONS_TOTAL,
       periodEnd: null,
@@ -170,19 +191,8 @@ export async function getUserEntitlements(
     };
   } catch (error) {
     logger.error(`Error computing entitlements for ${userId}:`, error);
-    // Fail closed for paid features, but don't block existing free usage checks
-    return {
-      plan: "free",
-      isPremium: false,
-      canGenerate: false,
-      canPractice: false,
-      generationsUsed: 0,
-      generationsLimit: FREE_GENERATIONS_TOTAL,
-      sessionsUsed: 0,
-      sessionsLimit: FREE_SESSIONS_TOTAL,
-      periodEnd: null,
-      cancelAtPeriodEnd: false,
-    };
+    // Fail closed
+    return lockedFree;
   }
 }
 

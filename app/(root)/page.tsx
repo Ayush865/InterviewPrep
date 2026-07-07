@@ -258,7 +258,7 @@ async function Dashboard({
           </p>
         </div>
         <GenerateInterviewButton
-          canGenerate={entitlements.canGenerate}
+          canGenerate={entitlements.canGenerateForm}
           plan={entitlements.plan}
         />
       </section>

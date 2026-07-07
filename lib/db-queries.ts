@@ -296,6 +296,7 @@ export async function createInterview(interviewData: {
   finalized?: boolean;
   cover_image?: string;
   company_name?: string;
+  generation_method?: "form" | "call";
 }): Promise<Interview> {
   const pool = getPool();
   const id = uuidv4();
@@ -303,8 +304,8 @@ export async function createInterview(interviewData: {
   try {
     await pool.execute(
       `INSERT INTO interviews
-       (id, user_id, role, type, level, techstack, questions, finalized, cover_image, company_name, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+       (id, user_id, role, type, level, techstack, questions, finalized, cover_image, company_name, generation_method, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
       [
         id,
         interviewData.user_id,
@@ -316,6 +317,7 @@ export async function createInterview(interviewData: {
         interviewData.finalized || false,
         interviewData.cover_image || null,
         interviewData.company_name || null,
+        interviewData.generation_method || "form",
       ]
     );
 
@@ -960,6 +962,26 @@ export async function countInterviewsCreatedSince(
     return rows[0].count || 0;
   } catch (error: any) {
     logger.error(`[DB] Error counting interviews since date:`, error);
+    throw new Error(`Database error: ${error.message}`);
+  }
+}
+
+/**
+ * Count interviews a user generated via the hiring-manager call.
+ * Free plan allows 1 call generation total (form generation is unlimited).
+ */
+export async function countCallGenerations(userId: string): Promise<number> {
+  const pool = getPool();
+
+  try {
+    const [rows] = await pool.execute<mysql.RowDataPacket[]>(
+      `SELECT COUNT(*) as count FROM interviews
+       WHERE user_id = ? AND generation_method = 'call'`,
+      [userId]
+    );
+    return rows[0].count || 0;
+  } catch (error: any) {
+    logger.error(`[DB] Error counting call generations:`, error);
     throw new Error(`Database error: ${error.message}`);
   }
 }
