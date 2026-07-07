@@ -4,25 +4,21 @@ import { useState } from "react";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import LimitReachedModal from "./LimitReachedModal";
+import type { Plan } from "@/lib/plans";
 
 interface GenerateInterviewButtonProps {
-  isPremium: boolean;
-  interviewCount: number;
-  hasVapiCredentials: boolean;
+  canGenerate: boolean;
+  plan: Plan;
 }
 
 const GenerateInterviewButton = ({
-  isPremium,
-  interviewCount,
-  hasVapiCredentials,
+  canGenerate,
+  plan,
 }: GenerateInterviewButtonProps) => {
   const [showLimitModal, setShowLimitModal] = useState(false);
 
-  const canGenerateUnlimited = isPremium || hasVapiCredentials;
-  const limitReached = !canGenerateUnlimited && interviewCount >= 1;
-
   const handleClick = (e: React.MouseEvent) => {
-    if (limitReached) {
+    if (!canGenerate) {
       e.preventDefault();
       setShowLimitModal(true);
     }
@@ -31,7 +27,7 @@ const GenerateInterviewButton = ({
   return (
     <>
       <Link
-        href={limitReached ? "#" : "/interview"}
+        href={canGenerate ? "/interview" : "#"}
         onClick={handleClick}
         className="btn-accent max-sm:w-full"
       >
@@ -42,8 +38,16 @@ const GenerateInterviewButton = ({
       <LimitReachedModal
         isOpen={showLimitModal}
         onClose={() => setShowLimitModal(false)}
-        messageLine1="You have reached the free plan limit of 1 interview generation."
-        messageLine2="Upgrade to Premium or use your own Vapi API key to generate unlimited interviews!"
+        messageLine1={
+          plan === "pro"
+            ? "You've used all 10 interview generations for this billing period."
+            : "You have reached the free plan limit of 1 interview generation."
+        }
+        messageLine2={
+          plan === "pro"
+            ? "Your quota resets when your subscription renews, or connect your own Vapi key for unlimited access."
+            : "Upgrade to Pro for 10 interviews a month, or use your own Vapi API key for unlimited access."
+        }
       />
     </>
   );

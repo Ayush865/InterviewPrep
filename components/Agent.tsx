@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { cn } from "@/lib/utils";
 import { vapi } from "@/lib/vapi.sdk";
 import { interviewer } from "@/constants";
+import { SESSION_MAX_DURATION_SECONDS } from "@/lib/plans";
 import {
   createFeedback,
   getLatestGeneratedInterview,
@@ -285,7 +286,13 @@ const Agent = ({
           .map((question) => `- ${question}`)
           .join("\n");
 
-        await vapiInstance.start(interviewer, {
+        // Free/Pro sessions run on our Vapi account and are capped at
+        // 30 minutes; BYOK users are on their own bill and uncapped
+        const assistantConfig = isCustom
+          ? interviewer
+          : { ...interviewer, maxDurationSeconds: SESSION_MAX_DURATION_SECONDS };
+
+        await vapiInstance.start(assistantConfig, {
           variableValues: { questions: formattedQuestions },
         });
       }

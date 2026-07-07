@@ -5,6 +5,7 @@ import { Calendar, Gauge, CheckCircle2 } from "lucide-react";
 import DisplayTechIcons from "./DisplayTechIcons";
 import TakeInterviewButton from "./TakeInterviewButton";
 import type { FeedbackSummary } from "@/lib/actions/general.action";
+import type { Plan } from "@/lib/plans";
 
 interface InterviewCardComponentProps {
   interviewId: string;
@@ -15,9 +16,8 @@ interface InterviewCardComponentProps {
   coverImage?: string;
   isTaken?: boolean;
   feedback: FeedbackSummary | null;
-  isPremium: boolean;
-  hasVapiCredentials: boolean;
-  feedbackCount: number;
+  canPractice: boolean;
+  plan: Plan;
 }
 
 const InterviewCard = ({
@@ -29,9 +29,8 @@ const InterviewCard = ({
   coverImage,
   isTaken = false,
   feedback,
-  isPremium,
-  hasVapiCredentials,
-  feedbackCount,
+  canPractice,
+  plan,
 }: InterviewCardComponentProps) => {
   const normalizedType = /mix/gi.test(type) ? "Mixed" : type;
 
@@ -89,9 +88,8 @@ const InterviewCard = ({
         <DisplayTechIcons techStack={techstack} />
 
         <TakeInterviewButton
-          isPremium={isPremium}
-          hasVapiCredentials={hasVapiCredentials}
-          feedbackCount={feedbackCount}
+          canPractice={canPractice}
+          plan={plan}
           interviewId={interviewId}
           hasFeedback={!!feedback}
         />

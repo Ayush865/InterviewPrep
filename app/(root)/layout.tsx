@@ -3,7 +3,7 @@ import Image from "next/image";
 import { ReactNode } from "react";
 import { currentUser } from "@clerk/nextjs/server";
 import { UserButton } from "@clerk/nextjs";
-import { Settings } from "lucide-react";
+import { Settings, CreditCard } from "lucide-react";
 import LogoutHandler from "@/components/LogoutHandler";
 import ThemeToggle from "@/components/ThemeToggle";
 
@@ -43,6 +43,13 @@ const Layout = async ({ children }: { children: ReactNode }) => {
                   New interview
                 </Link>
                 <ThemeToggle />
+                <Link
+                  href="/settings/billing"
+                  className="inline-flex size-10 items-center justify-center rounded-full text-soft transition-colors duration-200 hover:bg-hover hover:text-strong"
+                  aria-label="Billing"
+                >
+                  <CreditCard className="size-5" aria-hidden="true" />
+                </Link>
                 <Link
                   href="/settings/vapi"
                   className="inline-flex size-10 items-center justify-center rounded-full text-soft transition-colors duration-200 hover:bg-hover hover:text-strong"

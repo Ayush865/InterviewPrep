@@ -12,12 +12,12 @@ import {
 import { useGenerationGate } from "@/hooks/useGenerationGate";
 
 const Page = () => {
-  const { user, isLoaded, loading, resumeData, limitReached } =
+  const { user, isLoaded, loading, resumeData, limitReached, plan } =
     useGenerationGate();
 
   if (!isLoaded || loading) return <GateLoading />;
   if (!user?.id) return <GateAuthRequired />;
-  if (limitReached) return <GateLimitReached />;
+  if (limitReached) return <GateLimitReached plan={plan} />;
 
   return (
     <div className="mx-auto w-full max-w-xl pb-24 pt-12 max-sm:pt-8">

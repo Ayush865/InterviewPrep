@@ -3,21 +3,19 @@
 import { useEffect, useState } from "react";
 import { useUser } from "@clerk/nextjs";
 
-import { getUserPremiumStatus } from "@/lib/actions/premium.action";
-import { getInterviewsByUserId } from "@/lib/actions/general.action";
-import { hasUserVapiCredentials } from "@/lib/actions/vapi.action";
+import { getUserEntitlements } from "@/lib/actions/premium.action";
 import { getResumeByUserId, type ParsedResumeData } from "@/lib/actions/resume.action";
+import type { Plan } from "@/lib/plans";
 
 /**
  * Shared gating state for the interview generation pages (/interview and
- * /interview/call): auth, free-plan limit, and resume context.
+ * /interview/call): auth, plan limits, and resume context.
  */
 export function useGenerationGate() {
   const { user, isLoaded } = useUser();
   const [loading, setLoading] = useState(true);
-  const [isPremium, setIsPremium] = useState(false);
-  const [interviewCount, setInterviewCount] = useState(0);
-  const [hasVapiCredentials, setHasVapiCredentials] = useState(false);
+  const [canGenerate, setCanGenerate] = useState(false);
+  const [plan, setPlan] = useState<Plan>("free");
   const [resumeData, setResumeData] = useState<ParsedResumeData | null>(null);
 
   useEffect(() => {
@@ -28,24 +26,27 @@ export function useGenerationGate() {
       }
 
       try {
-        const [premium, interviews, hasDbCredentials, resume] = await Promise.all([
-          getUserPremiumStatus(user.id),
-          getInterviewsByUserId(user.id),
-          hasUserVapiCredentials(user.id),
+        const [entitlements, resume] = await Promise.all([
+          getUserEntitlements(user.id),
           getResumeByUserId(user.id),
         ]);
 
-        setIsPremium(premium);
-        setInterviewCount(interviews?.length || 0);
         setResumeData(resume);
+        setPlan(entitlements.plan);
 
-        if (hasDbCredentials) {
-          setHasVapiCredentials(true);
+        if (entitlements.canGenerate) {
+          setCanGenerate(true);
         } else {
-          // Fallback: credentials saved locally but not yet linked in the DB
+          // Fallback: Vapi credentials saved locally but not yet linked in
+          // the DB still count as bring-your-own-key
           const assistantId = localStorage.getItem("vapi_assistant_id");
           const webToken = localStorage.getItem("vapi_web_token");
-          setHasVapiCredentials(!!(assistantId && webToken));
+          if (assistantId && webToken) {
+            setPlan("byok");
+            setCanGenerate(true);
+          } else {
+            setCanGenerate(false);
+          }
         }
       } catch (error) {
         console.error("Error fetching generation gate data:", error);
@@ -57,17 +58,12 @@ export function useGenerationGate() {
     fetchData();
   }, [isLoaded, user]);
 
-  const canGenerateUnlimited = isPremium || hasVapiCredentials;
-  const limitReached = !canGenerateUnlimited && interviewCount >= 1;
-
   return {
     user,
     isLoaded,
     loading,
-    isPremium,
-    interviewCount,
-    hasVapiCredentials,
+    plan,
     resumeData,
-    limitReached,
+    limitReached: !canGenerate,
   };
 }

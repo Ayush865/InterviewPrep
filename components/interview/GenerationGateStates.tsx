@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { Loader2, Lock, Settings, Sparkles } from "lucide-react";
+import UpgradeButton from "@/components/UpgradeButton";
+import type { Plan } from "@/lib/plans";
 
 /** Centered loading state while gate data resolves */
 export const GateLoading = () => (
@@ -32,28 +34,29 @@ export const GateAuthRequired = () => (
   </div>
 );
 
-/** Shown when the free-plan generation limit is reached */
-export const GateLimitReached = () => (
+/** Shown when the plan's generation limit is reached */
+export const GateLimitReached = ({ plan = "free" }: { plan?: Plan }) => (
   <div className="flex min-h-[60vh] items-center justify-center py-16">
     <div className="panel flex max-w-lg flex-col items-center gap-6 px-10 py-12 text-center">
       <div className="flex size-12 items-center justify-center rounded-full border border-accent/25 bg-accent/10">
         <Sparkles className="size-5 text-accent" aria-hidden="true" />
       </div>
       <div>
-        <h2 className="display text-2xl">Free plan limit reached</h2>
+        <h2 className="display text-2xl">
+          {plan === "pro" ? "Monthly quota used" : "Free plan limit reached"}
+        </h2>
         <p className="mt-3 leading-relaxed text-soft">
-          You&apos;ve used your free interview generation. Connect your own
-          Vapi key or upgrade to Premium for unlimited interviews.
+          {plan === "pro"
+            ? "You've used all 10 interview generations for this billing period. Your quota resets on renewal, or connect your own Vapi key for unlimited access."
+            : "You've used your free interview generation. Upgrade to Pro for 10 interviews a month, or connect your own Vapi key for unlimited access."}
         </p>
       </div>
       <div className="flex w-full flex-col gap-3 sm:flex-row sm:justify-center">
+        {plan !== "pro" && <UpgradeButton className="!h-10 text-sm" />}
         <Link href="/settings/vapi" className="btn-quiet !h-10 text-sm">
           <Settings className="size-4" aria-hidden="true" />
           Use my Vapi key
         </Link>
-        <button type="button" className="btn-accent !h-10 text-sm">
-          Upgrade to Premium
-        </button>
       </div>
       <Link
         href="/"

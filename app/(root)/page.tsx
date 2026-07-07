@@ -23,14 +23,9 @@ import {
   getUserInterviewsPage,
   getDiscoverInterviewsPage,
   getFeedbackSummaries,
-  getInterviewsByUserId,
   getTotalInterviewCount,
 } from "@/lib/actions/general.action";
-import {
-  getUserPremiumStatus,
-  getUserFeedbackCount,
-} from "@/lib/actions/premium.action";
-import { hasUserVapiCredentials } from "@/lib/actions/vapi.action";
+import { getUserEntitlements } from "@/lib/actions/premium.action";
 import { getResumeByUserId } from "@/lib/actions/resume.action";
 
 const PAGE_SIZE = 6;
@@ -223,23 +218,13 @@ async function Dashboard({
   discoverPage: number;
 }) {
   // One round of parallel queries for everything the dashboard needs
-  const [
-    myInterviewsResult,
-    discoverResult,
-    createdInterviews,
-    isPremium,
-    hasVapiCredentials,
-    feedbackCount,
-    resume,
-  ] = await Promise.all([
-    getUserInterviewsPage(userId, myPage, PAGE_SIZE),
-    getDiscoverInterviewsPage(userId, discoverPage, PAGE_SIZE),
-    getInterviewsByUserId(userId),
-    getUserPremiumStatus(userId),
-    hasUserVapiCredentials(userId),
-    getUserFeedbackCount(userId),
-    getResumeByUserId(userId),
-  ]);
+  const [myInterviewsResult, discoverResult, entitlements, resume] =
+    await Promise.all([
+      getUserInterviewsPage(userId, myPage, PAGE_SIZE),
+      getDiscoverInterviewsPage(userId, discoverPage, PAGE_SIZE),
+      getUserEntitlements(userId),
+      getResumeByUserId(userId),
+    ]);
 
   const { interviews: myInterviews, total: myTotal } = myInterviewsResult;
   const { interviews: discoverInterviews, total: discoverTotal } =
@@ -256,9 +241,8 @@ async function Dashboard({
   const discoverTotalPages = Math.ceil(discoverTotal / PAGE_SIZE);
 
   const cardProps = {
-    isPremium,
-    hasVapiCredentials,
-    feedbackCount,
+    canPractice: entitlements.canPractice,
+    plan: entitlements.plan,
   };
 
   return (
@@ -274,9 +258,8 @@ async function Dashboard({
           </p>
         </div>
         <GenerateInterviewButton
-          isPremium={isPremium}
-          interviewCount={createdInterviews?.length || 0}
-          hasVapiCredentials={hasVapiCredentials}
+          canGenerate={entitlements.canGenerate}
+          plan={entitlements.plan}
         />
       </section>
 

@@ -5,15 +5,12 @@ import { Settings, Sparkles } from "lucide-react";
 
 import DisplayTechIcons from "@/components/DisplayTechIcons";
 import InterviewSession from "@/components/interview/InterviewSession";
+import UpgradeButton from "@/components/UpgradeButton";
 import {
   getFeedbackByInterviewId,
   getInterviewById,
 } from "@/lib/actions/general.action";
-import {
-  getUserFeedbackCount,
-  getUserPremiumStatus,
-} from "@/lib/actions/premium.action";
-import { hasUserVapiCredentials } from "@/lib/actions/vapi.action";
+import { getUserEntitlements } from "@/lib/actions/premium.action";
 
 const InterviewDetails = async ({ params }: RouteParams) => {
   const { id } = await params;
@@ -24,16 +21,13 @@ const InterviewDetails = async ({ params }: RouteParams) => {
   const interview = await getInterviewById(id);
   if (!interview) redirect("/");
 
-  const [feedback, isPremium, feedbackCount, hasVapiCredentials] =
-    await Promise.all([
-      getFeedbackByInterviewId({ interviewId: id, userId: clerkUser.id }),
-      getUserPremiumStatus(clerkUser.id),
-      getUserFeedbackCount(clerkUser.id),
-      hasUserVapiCredentials(clerkUser.id),
-    ]);
+  const [feedback, entitlements] = await Promise.all([
+    getFeedbackByInterviewId({ interviewId: id, userId: clerkUser.id }),
+    getUserEntitlements(clerkUser.id),
+  ]);
 
-  const limitReached =
-    !isPremium && !hasVapiCredentials && feedbackCount >= 1 && !feedback;
+  // Retaking an already-completed interview is always allowed
+  const limitReached = !entitlements.canPractice && !feedback;
 
   if (limitReached) {
     return (
@@ -43,20 +37,25 @@ const InterviewDetails = async ({ params }: RouteParams) => {
             <Sparkles className="size-5 text-accent" aria-hidden="true" />
           </div>
           <div>
-            <h2 className="display text-2xl">Free plan limit reached</h2>
+            <h2 className="display text-2xl">
+              {entitlements.plan === "pro"
+                ? "Monthly quota used"
+                : "Free plan limit reached"}
+            </h2>
             <p className="mt-3 leading-relaxed text-soft">
-              You&apos;ve taken your free interview. Connect your own Vapi key
-              or upgrade to Premium for unlimited interviews.
+              {entitlements.plan === "pro"
+                ? "You've used all 10 practice sessions for this billing period. Your quota resets on renewal, or connect your own Vapi key for unlimited sessions."
+                : "You've taken your free practice session. Upgrade to Pro for 10 sessions a month, or connect your own Vapi key for unlimited access."}
             </p>
           </div>
           <div className="flex w-full flex-col gap-3 sm:flex-row sm:justify-center">
+            {entitlements.plan !== "pro" && (
+              <UpgradeButton className="!h-10 text-sm" />
+            )}
             <Link href="/settings/vapi" className="btn-quiet !h-10 text-sm">
               <Settings className="size-4" aria-hidden="true" />
               Use my Vapi key
             </Link>
-            <button type="button" className="btn-accent !h-10 text-sm">
-              Upgrade to Premium
-            </button>
           </div>
           <Link
             href="/"

@@ -1,8 +1,8 @@
 import { getLogoForCompany } from "@/lib/utils";
-import { getUserById, getUserCounts, createInterview, createUser } from "@/lib/db-queries";
+import { getUserById, createInterview, createUser } from "@/lib/db-queries";
 import { getResumeVector } from "@/lib/vector-store";
 import { logger } from "@/lib/logger";
-import { hasUserVapiCredentials } from "@/lib/actions/vapi.action";
+import { getUserEntitlements } from "@/lib/actions/premium.action";
 
 const NVIDIA_BASE_URL = "https://integrate.api.nvidia.com/v1";
 
@@ -84,24 +84,30 @@ export async function POST(request: Request) {
       }
     }
 
-    // Check premium status and interview limit
-    const counts = await getUserCounts(userid);
-    // MySQL returns 1/0 for boolean columns, use Boolean() to handle both cases
-    const isPremium = Boolean(user.premium_user);
-    const interviewCount = counts.interviewCount;
+    // Plan-based generation limit (free: 1 total, pro: 10/period, byok: unlimited)
+    const entitlements = await getUserEntitlements(userid);
 
-    // Check if user has their own VAPI credentials
-    const hasVapiCredentials = await hasUserVapiCredentials(userid);
+    logger.info(`[User Check] User ${userid} entitlements`, {
+      plan: entitlements.plan,
+      generationsUsed: entitlements.generationsUsed,
+      generationsLimit: entitlements.generationsLimit,
+    });
 
-    logger.info(`[User Check] User ${userid}: Premium=${isPremium}, Interviews=${interviewCount}, HasVapiCredentials=${hasVapiCredentials}`);
-
-    if (!isPremium && !hasVapiCredentials && interviewCount >= 1) {
-      logger.warn(`[Limit] User ${userid} reached interview generation limit (Non-Premium, No VAPI credentials)`);
-      return Response.json(
+    if (!entitlements.canGenerate) {
+      logger.warn(
+        `[Limit] User ${userid} reached generation limit`,
         {
-          success: false,
-          error: "Free plan limit reached. You can only generate 1 interview. Upgrade to Premium for unlimited access."
-        },
+          plan: entitlements.plan,
+          used: entitlements.generationsUsed,
+          limit: entitlements.generationsLimit,
+        }
+      );
+      const error =
+        entitlements.plan === "pro"
+          ? `You've used all ${entitlements.generationsLimit} interview generations for this billing period. Your quota resets on renewal, or connect your own Vapi key for unlimited access.`
+          : "Free plan limit reached. You can only generate 1 interview. Upgrade to Pro ($5/month) or connect your own Vapi key.";
+      return Response.json(
+        { success: false, error },
         { status: 403, headers: corsHeaders }
       );
     }

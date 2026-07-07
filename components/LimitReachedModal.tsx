@@ -2,9 +2,10 @@
 
 import { createPortal } from "react-dom";
 import { useEffect, useState } from "react";
-import { X, Lock, Settings, Sparkles, Check } from "lucide-react";
+import { X, Lock, Settings, Check } from "lucide-react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "motion/react";
+import UpgradeButton from "./UpgradeButton";
 
 interface LimitReachedModalProps {
   isOpen: boolean;
@@ -15,9 +16,9 @@ interface LimitReachedModalProps {
 }
 
 const premiumPerks = [
-  "Unlimited interview generations",
-  "Unlimited practice interviews",
-  "Priority AI feedback",
+  "10 interview generations every month",
+  "10 practice sessions (30 min) every month",
+  "Only $5/month — cancel anytime",
 ];
 
 const LimitReachedModal = ({
@@ -121,10 +122,7 @@ const LimitReachedModal = ({
               </ul>
 
               <div className="flex flex-col gap-2.5">
-                <button type="button" className="btn-accent !h-11 w-full text-sm">
-                  <Sparkles className="size-4" aria-hidden="true" />
-                  Upgrade to Premium
-                </button>
+                <UpgradeButton className="!h-11 w-full text-sm" />
                 <Link
                   href="/settings/vapi"
                   className="btn-quiet !h-11 w-full text-sm"
