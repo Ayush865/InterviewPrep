@@ -269,7 +269,7 @@ const Agent = ({
 
         if (!assistantId) {
           throw new Error(
-            "No assistant configured. Please set up Vapi in settings."
+            "The voice assistant is not configured. Please try again later."
           );
         }
 
@@ -300,7 +300,7 @@ const Agent = ({
       console.error("Error starting call:", error);
       setError(
         error?.message ||
-          "Failed to start the interview. Please verify your Vapi credentials and try again."
+          "Failed to start the interview. Please check your microphone and try again."
       );
       setCallStatus(CallStatus.INACTIVE);
     }

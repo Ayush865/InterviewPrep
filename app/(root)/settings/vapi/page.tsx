@@ -7,8 +7,13 @@
 import { VapiSettings } from "@/components/VapiSettings";
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
+import { isVapiByokEnabled } from "@/lib/feature-flags";
 
 export default async function VapiSettingsPage() {
+  if (!isVapiByokEnabled()) {
+    redirect("/settings/billing");
+  }
+
   const { userId } = await auth();
 
   if (!userId) {

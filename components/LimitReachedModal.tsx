@@ -6,6 +6,7 @@ import { X, Lock, Settings, Check } from "lucide-react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "motion/react";
 import UpgradeButton from "./UpgradeButton";
+import { isVapiByokEnabled } from "@/lib/feature-flags";
 
 interface LimitReachedModalProps {
   isOpen: boolean;
@@ -123,13 +124,15 @@ const LimitReachedModal = ({
 
               <div className="flex flex-col gap-2.5">
                 <UpgradeButton className="!h-11 w-full text-sm" />
-                <Link
-                  href="/settings/vapi"
-                  className="btn-quiet !h-11 w-full text-sm"
-                >
-                  <Settings className="size-4" aria-hidden="true" />
-                  Use my own Vapi key
-                </Link>
+                {isVapiByokEnabled() && (
+                  <Link
+                    href="/settings/vapi"
+                    className="btn-quiet !h-11 w-full text-sm"
+                  >
+                    <Settings className="size-4" aria-hidden="true" />
+                    Use my own Vapi key
+                  </Link>
+                )}
               </div>
             </div>
           </motion.div>

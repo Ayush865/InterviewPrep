@@ -15,6 +15,7 @@ import { logger } from '@/lib/logger';
 import { Assistant, Tool } from '@/lib/vapi/types';
 import * as fs from 'fs';
 import * as path from 'path';
+import { isVapiByokEnabled } from "@/lib/feature-flags";
 
 interface CloneRequest {
   userId: string;
@@ -27,6 +28,14 @@ interface CloneResponse {
 }
 
 export async function POST(request: NextRequest) {
+  // BYOK Vapi keys are disabled via feature flag
+  if (!isVapiByokEnabled()) {
+    return NextResponse.json(
+      { error: "Vapi key linking is not available" },
+      { status: 403 }
+    );
+  }
+
   const actions: string[] = [];
 
   try {

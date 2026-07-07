@@ -16,6 +16,7 @@ import {
   getSubscriptionSummary,
 } from "@/lib/actions/premium.action";
 import { PRO_PRICE_USD } from "@/lib/plans";
+import { isVapiByokEnabled } from "@/lib/feature-flags";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -200,10 +201,12 @@ export default async function BillingPage({
           ) : (
             <UpgradeButton className="flex-1" />
           )}
-          <Link href="/settings/vapi" className="btn-quiet flex-1">
-            <KeyRound className="size-4" aria-hidden="true" />
-            Use my own Vapi key
-          </Link>
+          {isVapiByokEnabled() && (
+            <Link href="/settings/vapi" className="btn-quiet flex-1">
+              <KeyRound className="size-4" aria-hidden="true" />
+              Use my own Vapi key
+            </Link>
+          )}
         </div>
       </div>
 

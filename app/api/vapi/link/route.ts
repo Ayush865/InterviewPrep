@@ -10,6 +10,7 @@ import { VapiClient } from '@/lib/vapi/client';
 import { encrypt } from '@/lib/crypto';
 import { saveApiKey } from '@/lib/db';
 import { logger } from '@/lib/logger';
+import { isVapiByokEnabled } from "@/lib/feature-flags";
 
 interface LinkRequest {
   userId: string;
@@ -17,6 +18,14 @@ interface LinkRequest {
 }
 
 export async function POST(request: NextRequest) {
+  // BYOK Vapi keys are disabled via feature flag
+  if (!isVapiByokEnabled()) {
+    return NextResponse.json(
+      { error: "Vapi key linking is not available" },
+      { status: 403 }
+    );
+  }
+
   try {
     const body: LinkRequest = await request.json();
     const { userId, apiKey } = body;

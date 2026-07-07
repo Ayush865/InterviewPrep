@@ -11,6 +11,7 @@ import {
   getInterviewById,
 } from "@/lib/actions/general.action";
 import { getUserEntitlements } from "@/lib/actions/premium.action";
+import { isVapiByokEnabled } from "@/lib/feature-flags";
 
 const InterviewDetails = async ({ params }: RouteParams) => {
   const { id } = await params;
@@ -44,18 +45,24 @@ const InterviewDetails = async ({ params }: RouteParams) => {
             </h2>
             <p className="mt-3 leading-relaxed text-soft">
               {entitlements.plan === "pro"
-                ? "You've used all 10 practice sessions for this billing period. Your quota resets on renewal, or connect your own Vapi key for unlimited sessions."
-                : "You've taken your free practice session. Upgrade to Pro for 10 sessions a month, or connect your own Vapi key for unlimited access."}
+                ? isVapiByokEnabled()
+                  ? "You've used all 10 practice sessions for this billing period. Your quota resets on renewal, or connect your own Vapi key for unlimited sessions."
+                  : "You've used all 10 practice sessions for this billing period. Your quota resets on renewal."
+                : isVapiByokEnabled()
+                  ? "You've taken your free practice session. Upgrade to Pro for 10 sessions a month, or connect your own Vapi key for unlimited access."
+                  : "You've taken your free practice session. Upgrade to Pro for 10 sessions a month."}
             </p>
           </div>
           <div className="flex w-full flex-col gap-3 sm:flex-row sm:justify-center">
             {entitlements.plan !== "pro" && (
               <UpgradeButton className="!h-10 text-sm" />
             )}
-            <Link href="/settings/vapi" className="btn-quiet !h-10 text-sm">
-              <Settings className="size-4" aria-hidden="true" />
-              Use my Vapi key
-            </Link>
+            {isVapiByokEnabled() && (
+              <Link href="/settings/vapi" className="btn-quiet !h-10 text-sm">
+                <Settings className="size-4" aria-hidden="true" />
+                Use my Vapi key
+              </Link>
+            )}
           </div>
           <Link
             href="/"

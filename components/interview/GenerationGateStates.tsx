@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Loader2, Lock, Settings, Sparkles } from "lucide-react";
 import UpgradeButton from "@/components/UpgradeButton";
 import type { Plan } from "@/lib/plans";
+import { isVapiByokEnabled } from "@/lib/feature-flags";
 
 /** Centered loading state while gate data resolves */
 export const GateLoading = () => (
@@ -47,16 +48,22 @@ export const GateLimitReached = ({ plan = "free" }: { plan?: Plan }) => (
         </h2>
         <p className="mt-3 leading-relaxed text-soft">
           {plan === "pro"
-            ? "You've used all 10 interview generations for this billing period. Your quota resets on renewal, or connect your own Vapi key for unlimited access."
-            : "You've used your free interview generation. Upgrade to Pro for 10 interviews a month, or connect your own Vapi key for unlimited access."}
+            ? isVapiByokEnabled()
+              ? "You've used all 10 interview generations for this billing period. Your quota resets on renewal, or connect your own Vapi key for unlimited access."
+              : "You've used all 10 interview generations for this billing period. Your quota resets on renewal."
+            : isVapiByokEnabled()
+              ? "You've used your free interview generation. Upgrade to Pro for 10 interviews a month, or connect your own Vapi key for unlimited access."
+              : "You've used your free interview generation. Upgrade to Pro for 10 interviews a month."}
         </p>
       </div>
       <div className="flex w-full flex-col gap-3 sm:flex-row sm:justify-center">
         {plan !== "pro" && <UpgradeButton className="!h-10 text-sm" />}
-        <Link href="/settings/vapi" className="btn-quiet !h-10 text-sm">
-          <Settings className="size-4" aria-hidden="true" />
-          Use my Vapi key
-        </Link>
+        {isVapiByokEnabled() && (
+          <Link href="/settings/vapi" className="btn-quiet !h-10 text-sm">
+            <Settings className="size-4" aria-hidden="true" />
+            Use my Vapi key
+          </Link>
+        )}
       </div>
       <Link
         href="/"

@@ -3,6 +3,7 @@ import { getUserById, createInterview, createUser } from "@/lib/db-queries";
 import { getResumeVector } from "@/lib/vector-store";
 import { logger } from "@/lib/logger";
 import { getUserEntitlements } from "@/lib/actions/premium.action";
+import { isVapiByokEnabled } from "@/lib/feature-flags";
 
 const NVIDIA_BASE_URL = "https://integrate.api.nvidia.com/v1";
 
@@ -102,10 +103,15 @@ export async function POST(request: Request) {
           limit: entitlements.generationsLimit,
         }
       );
+      const byokHint = isVapiByokEnabled()
+        ? entitlements.plan === "pro"
+          ? " or connect your own Vapi key for unlimited access"
+          : " or connect your own Vapi key"
+        : "";
       const error =
         entitlements.plan === "pro"
-          ? `You've used all ${entitlements.generationsLimit} interview generations for this billing period. Your quota resets on renewal, or connect your own Vapi key for unlimited access.`
-          : "Free plan limit reached. You can only generate 1 interview. Upgrade to Pro ($5/month) or connect your own Vapi key.";
+          ? `You've used all ${entitlements.generationsLimit} interview generations for this billing period. Your quota resets on renewal${byokHint}.`
+          : `Free plan limit reached. You can only generate 1 interview. Upgrade to Pro ($5/month)${byokHint}.`;
       return Response.json(
         { success: false, error },
         { status: 403, headers: corsHeaders }

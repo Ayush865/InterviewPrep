@@ -6,6 +6,7 @@ import { UserButton } from "@clerk/nextjs";
 import { Settings, CreditCard } from "lucide-react";
 import LogoutHandler from "@/components/LogoutHandler";
 import ThemeToggle from "@/components/ThemeToggle";
+import { isVapiByokEnabled } from "@/lib/feature-flags";
 
 const Layout = async ({ children }: { children: ReactNode }) => {
   const user = await currentUser();
@@ -50,13 +51,15 @@ const Layout = async ({ children }: { children: ReactNode }) => {
                 >
                   <CreditCard className="size-5" aria-hidden="true" />
                 </Link>
-                <Link
-                  href="/settings/vapi"
-                  className="inline-flex size-10 items-center justify-center rounded-full text-soft transition-colors duration-200 hover:bg-hover hover:text-strong"
-                  aria-label="Vapi settings"
-                >
-                  <Settings className="size-5" aria-hidden="true" />
-                </Link>
+                {isVapiByokEnabled() && (
+                  <Link
+                    href="/settings/vapi"
+                    className="inline-flex size-10 items-center justify-center rounded-full text-soft transition-colors duration-200 hover:bg-hover hover:text-strong"
+                    aria-label="Vapi settings"
+                  >
+                    <Settings className="size-5" aria-hidden="true" />
+                  </Link>
+                )}
                 <div className="ml-1">
                   <UserButton
                     appearance={{

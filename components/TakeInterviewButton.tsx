@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import LimitReachedModal from "./LimitReachedModal";
 import type { Plan } from "@/lib/plans";
+import { isVapiByokEnabled } from "@/lib/feature-flags";
 
 interface TakeInterviewButtonProps {
   canPractice: boolean;
@@ -59,8 +60,12 @@ const TakeInterviewButton = ({
         }
         messageLine2={
           plan === "pro"
-            ? "Your quota resets when your subscription renews, or connect your own Vapi key for unlimited sessions."
-            : "Upgrade to Pro for 10 sessions a month, or use your own Vapi API key for unlimited access."
+            ? isVapiByokEnabled()
+              ? "Your quota resets when your subscription renews, or connect your own Vapi key for unlimited sessions."
+              : "Your quota resets when your subscription renews."
+            : isVapiByokEnabled()
+              ? "Upgrade to Pro for 10 sessions a month, or use your own Vapi API key for unlimited access."
+              : "Upgrade to Pro for 10 sessions a month."
         }
       />
     </>

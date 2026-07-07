@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Plus } from "lucide-react";
 import LimitReachedModal from "./LimitReachedModal";
 import type { Plan } from "@/lib/plans";
+import { isVapiByokEnabled } from "@/lib/feature-flags";
 
 interface GenerateInterviewButtonProps {
   canGenerate: boolean;
@@ -45,8 +46,12 @@ const GenerateInterviewButton = ({
         }
         messageLine2={
           plan === "pro"
-            ? "Your quota resets when your subscription renews, or connect your own Vapi key for unlimited access."
-            : "Upgrade to Pro for 10 interviews a month, or use your own Vapi API key for unlimited access."
+            ? isVapiByokEnabled()
+              ? "Your quota resets when your subscription renews, or connect your own Vapi key for unlimited access."
+              : "Your quota resets when your subscription renews."
+            : isVapiByokEnabled()
+              ? "Upgrade to Pro for 10 interviews a month, or use your own Vapi API key for unlimited access."
+              : "Upgrade to Pro for 10 interviews a month."
         }
       />
     </>
