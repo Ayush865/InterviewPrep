@@ -3,13 +3,21 @@
  *
  * Provider-agnostic subscription billing: dispatches checkout and
  * subscription management to Razorpay or Stripe based on configuration.
+ * Supports Pro/Elite tiers, monthly/annual intervals, and a 7-day trial
+ * for first-time subscribers.
  */
 
 import { getPaymentProvider } from "@/lib/payments";
 import { getStripe, getBaseUrl } from "@/lib/stripe";
-import { getRazorpay, getProPlanId } from "@/lib/razorpay";
+import { getRazorpay, getPlanId } from "@/lib/razorpay";
 import { getUserSubscription } from "@/lib/db-queries";
-import { PRO_PRICE_USD } from "@/lib/plans";
+import {
+  PLAN_PRICES,
+  PLAN_LIMITS,
+  TRIAL_DAYS,
+  type PaidPlan,
+  type BillingInterval,
+} from "@/lib/plans";
 import { logger } from "@/lib/logger";
 
 export interface CheckoutResult {
@@ -37,35 +45,51 @@ function isSubscriptionActive(
 }
 
 /**
- * Start a Pro subscription checkout for the user.
+ * Start a paid-plan checkout for the user.
  */
 export async function createProCheckout(
   userId: string,
-  email?: string
+  email?: string,
+  plan: PaidPlan = "pro",
+  interval: BillingInterval = "monthly"
 ): Promise<CheckoutResult> {
   const provider = getPaymentProvider();
   const existing = await getUserSubscription(userId);
 
-  if (isSubscriptionActive(existing)) {
+  // Trial only for first-time subscribers
+  const eligibleForTrial = !existing;
+
+  if (isSubscriptionActive(existing) && existing!.plan === plan) {
     const manage = await manageSubscription(userId);
     if (manage.url) return { url: manage.url, alreadySubscribed: true };
-    throw new Error("You already have an active subscription.");
+    throw new Error("You already have an active subscription on this plan.");
   }
 
   if (provider === "razorpay") {
     const razorpay = getRazorpay();
-    const planId = await getProPlanId();
+    const planId = await getPlanId(plan, interval);
 
-    // 120 monthly charges = effectively "until canceled"
+    // Effectively "until canceled"
+    const totalCount = interval === "annual" ? 10 : 120;
+
     const subscription = await razorpay.subscriptions.create({
       plan_id: planId,
-      total_count: 120,
+      total_count: totalCount,
       customer_notify: 1,
-      notes: { userId, email: email || "" },
+      ...(eligibleForTrial
+        ? {
+            // Authorize now, first charge after the trial
+            start_at: Math.floor(Date.now() / 1000) + TRIAL_DAYS * 24 * 60 * 60,
+          }
+        : {}),
+      notes: { userId, email: email || "", plan, interval },
     });
 
     logger.info(`[Razorpay] Subscription created for user ${userId}`, {
       subscriptionId: subscription.id,
+      plan,
+      interval,
+      trial: eligibleForTrial,
     });
 
     // short_url is Razorpay's hosted checkout page for this subscription
@@ -79,7 +103,14 @@ export async function createProCheckout(
   // Stripe
   const stripe = getStripe();
   const baseUrl = getBaseUrl();
-  const priceId = process.env.STRIPE_PRO_PRICE_ID;
+  const priceId =
+    plan === "pro" && interval === "monthly"
+      ? process.env.STRIPE_PRO_PRICE_ID
+      : undefined;
+
+  const price = PLAN_PRICES[plan][interval].usd;
+  const limits = PLAN_LIMITS[plan];
+  const planName = plan === "elite" ? "Hired Fox Elite" : "Hired Fox Pro";
 
   const session = await stripe.checkout.sessions.create({
     mode: "subscription",
@@ -93,19 +124,21 @@ export async function createProCheckout(
         : {
             price_data: {
               currency: "usd",
-              unit_amount: PRO_PRICE_USD * 100,
-              recurring: { interval: "month" },
+              unit_amount: price * 100,
+              recurring: { interval: interval === "annual" ? "year" : "month" },
               product_data: {
-                name: "Hired Fox Pro",
-                description:
-                  "10 interview generations and 10 practice sessions (30 min each) per month",
+                name: `${planName} (${interval})`,
+                description: `${limits.generations} interview generations and ${limits.sessions} practice sessions (30 min each) per month`,
               },
             },
             quantity: 1,
           },
     ],
-    subscription_data: { metadata: { userId } },
-    metadata: { userId },
+    subscription_data: {
+      metadata: { userId, plan, interval },
+      ...(eligibleForTrial ? { trial_period_days: TRIAL_DAYS } : {}),
+    },
+    metadata: { userId, plan, interval },
     success_url: `${baseUrl}/settings/billing?status=success`,
     cancel_url: `${baseUrl}/settings/billing?status=canceled`,
     allow_promotion_codes: true,
@@ -113,6 +146,9 @@ export async function createProCheckout(
 
   logger.info(`[Stripe] Checkout session created for user ${userId}`, {
     sessionId: session.id,
+    plan,
+    interval,
+    trial: eligibleForTrial,
   });
 
   if (!session.url) throw new Error("Stripe did not return a checkout URL");
@@ -137,7 +173,7 @@ export async function manageSubscription(userId: string): Promise<ManageResult> 
       };
     }
 
-    // cancel_at_cycle_end keeps Pro until the paid period runs out
+    // cancel_at_cycle_end keeps access until the paid period runs out
     await getRazorpay().subscriptions.cancel(
       subscription.provider_subscription_id,
       true
@@ -149,7 +185,7 @@ export async function manageSubscription(userId: string): Promise<ManageResult> 
 
     return {
       message:
-        "Renewal canceled. You keep Pro access until the end of the current billing period.",
+        "Renewal canceled. You keep access until the end of the current billing period.",
     };
   }
 

@@ -9,6 +9,10 @@ import { cn } from "@/lib/utils";
 interface UpgradeButtonProps {
   /** "checkout" starts a new subscription, "manage" handles an existing one */
   mode?: "checkout" | "manage" | "portal";
+  /** Paid tier to check out (checkout mode only) */
+  plan?: "pro" | "elite";
+  /** Billing interval (checkout mode only) */
+  interval?: "monthly" | "annual";
   /** Ask before proceeding (e.g. Razorpay cancellation) */
   confirmMessage?: string;
   className?: string;
@@ -22,6 +26,8 @@ interface UpgradeButtonProps {
  */
 const UpgradeButton = ({
   mode = "checkout",
+  plan = "pro",
+  interval = "monthly",
   confirmMessage,
   className,
   children,
@@ -37,7 +43,15 @@ const UpgradeButton = ({
 
     setLoading(true);
     try {
-      const response = await fetch(endpoint, { method: "POST" });
+      const response = await fetch(endpoint, {
+        method: "POST",
+        ...(mode === "checkout"
+          ? {
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ plan, interval }),
+            }
+          : {}),
+      });
       const data = await response.json();
 
       if (!response.ok) {

@@ -71,7 +71,7 @@ async function syncSubscription(entity: RazorpaySubscriptionEntity) {
       status === "canceled" && periodEnd && periodEnd * 1000 > Date.now()
         ? "active" // paid through period end; webhook fires again on expiry
         : status,
-    plan: "pro",
+    plan: notes.plan === "elite" ? "elite" : "pro",
     current_period_start: entity.current_start
       ? new Date(entity.current_start * 1000)
       : null,

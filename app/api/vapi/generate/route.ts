@@ -30,7 +30,8 @@ export async function POST(request: Request) {
     // Handle both Vapi function call format and direct parameters.
     // The format also tells us the generation method: Vapi function calls
     // come from the hiring-manager call, direct params from the form.
-    let type, role, level, techstack, amount, userid, company_name, use_resume;
+    let type, role, level, techstack, amount, userid, company_name, use_resume,
+      job_description, focus_area;
     let generationMethod: "form" | "call";
 
     if (body.message?.functionCall?.parameters) {
@@ -42,7 +43,8 @@ export async function POST(request: Request) {
       logger.info("Extracted from Vapi function call format (call generation)");
     } else {
       // Direct parameters format
-      ({ type, role, level, techstack, amount, userid, company_name, use_resume } = body);
+      ({ type, role, level, techstack, amount, userid, company_name, use_resume,
+         job_description, focus_area } = body);
       generationMethod = "form";
       logger.info("Using direct parameters format (form generation)");
     }
@@ -131,6 +133,22 @@ export async function POST(request: Request) {
       );
     }
 
+    // JD-based interviews and targeted drills are paid features
+    if ((job_description || focus_area) && !entitlements.features.jdInterviews) {
+      logger.warn(`[Limit] User ${userid} attempted a paid generation feature on free plan`, {
+        hasJobDescription: !!job_description,
+        hasFocusArea: !!focus_area,
+      });
+      return Response.json(
+        {
+          success: false,
+          error:
+            "Job-description interviews and targeted drills are Pro features. Upgrade to unlock them.",
+        },
+        { status: 403, headers: corsHeaders }
+      );
+    }
+
     // Optionally fetch resume context from Upstash Vector
     let resumeContext = "";
     if (use_resume && userid) {
@@ -162,6 +180,20 @@ ${resumeData.raw_text.substring(0, 6000)}
          Include questions that ${company_name} is known to ask, covering both their technical bar and cultural expectations.`
       : `Generate high-quality, industry-standard interview questions.`;
 
+    // Job-description context (Pro): tailor questions to the actual posting
+    const jdContext = job_description
+      ? `The candidate is interviewing for the following job posting. Base the questions directly on its requirements, responsibilities, and preferred qualifications — probe the specific skills it demands:
+---
+${String(job_description).substring(0, 5000)}
+---`
+      : "";
+
+    // Targeted drill context (Pro): a short session focused on one weak area
+    const drillContext = focus_area
+      ? `This is a TARGETED PRACTICE DRILL. The candidate previously scored poorly on "${focus_area}".
+         Every question must specifically exercise ${focus_area}. Make the questions progressively harder and keep them focused — this is a drill, not a general interview.`
+      : "";
+
     const questionPrompt = `Prepare questions for a job interview.
         The job role is ${role}.
         The job experience level is ${level}.
@@ -169,6 +201,8 @@ ${resumeData.raw_text.substring(0, 6000)}
         The focus between behavioural and technical questions should lean towards: ${type}.
         The amount of questions required is: ${amount}.
         ${companyContext}
+        ${jdContext}
+        ${drillContext}
         ${resumeContext}
         Please return only the questions, without any additional text.
         The questions are going to be read by a voice assistant so do not use "/" or "*" or any other special characters which might break the voice assistant.

@@ -5,7 +5,7 @@ import { useUser } from "@clerk/nextjs";
 
 import { getUserEntitlements } from "@/lib/actions/premium.action";
 import { getResumeByUserId, type ParsedResumeData } from "@/lib/actions/resume.action";
-import type { Plan } from "@/lib/plans";
+import { PLAN_FEATURES, type Plan, type PlanFeatures } from "@/lib/plans";
 
 /**
  * Shared gating state for the interview generation pages (/interview and
@@ -20,6 +20,7 @@ export function useGenerationGate() {
   const [canGenerateForm, setCanGenerateForm] = useState(false);
   const [canGenerateCall, setCanGenerateCall] = useState(false);
   const [plan, setPlan] = useState<Plan>("free");
+  const [features, setFeatures] = useState<PlanFeatures>(PLAN_FEATURES.free);
   const [resumeData, setResumeData] = useState<ParsedResumeData | null>(null);
 
   useEffect(() => {
@@ -37,6 +38,7 @@ export function useGenerationGate() {
 
         setResumeData(resume);
         setPlan(entitlements.plan);
+        setFeatures(entitlements.features);
 
         // Fallback: Vapi credentials saved locally but not yet linked in
         // the DB still count as bring-your-own-key
@@ -46,6 +48,7 @@ export function useGenerationGate() {
 
         if (hasLocalByok && entitlements.plan === "free") {
           setPlan("byok");
+          setFeatures(PLAN_FEATURES.byok);
           setCanGenerateForm(true);
           setCanGenerateCall(true);
         } else {
@@ -67,6 +70,7 @@ export function useGenerationGate() {
     isLoaded,
     loading,
     plan,
+    features,
     resumeData,
     canGenerateForm,
     canGenerateCall,

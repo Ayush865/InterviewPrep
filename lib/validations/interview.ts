@@ -8,6 +8,10 @@ export const interviewFormSchema = z.object({
   amount: z.number().min(3, "Minimum 3 questions").max(15, "Maximum 15 questions"),
   company_name: z.string().optional(),   // target company key e.g. "google"
   use_resume: z.boolean().optional(),    // whether to include resume context in Gemini prompt
+  job_description: z
+    .string()
+    .max(8000, "Job description is too long (max 8,000 characters)")
+    .optional(),                          // paste a JD to tailor questions (Pro)
 });
 
 export type InterviewFormData = z.infer<typeof interviewFormSchema>;

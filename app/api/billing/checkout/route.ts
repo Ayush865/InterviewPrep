@@ -6,19 +6,32 @@
 
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { createProCheckout } from "@/lib/billing";
+import type { PaidPlan, BillingInterval } from "@/lib/plans";
 import { logger } from "@/lib/logger";
 
-export async function POST() {
+export async function POST(request: Request) {
   try {
     const { userId } = await auth();
     if (!userId) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    let plan: PaidPlan = "pro";
+    let interval: BillingInterval = "monthly";
+    try {
+      const body = await request.json();
+      if (body.plan === "elite") plan = "elite";
+      if (body.interval === "annual") interval = "annual";
+    } catch {
+      // No body — default to pro/monthly
+    }
+
     const user = await currentUser();
     const result = await createProCheckout(
       userId,
-      user?.emailAddresses?.[0]?.emailAddress
+      user?.emailAddresses?.[0]?.emailAddress,
+      plan,
+      interval
     );
 
     return Response.json(result);

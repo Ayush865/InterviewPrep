@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { FileText, Minus, Plus, Loader2 } from "lucide-react";
+import { FileText, Minus, Plus, Loader2, Lock, Briefcase } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -46,9 +46,11 @@ interface ParsedResumeData {
 interface InterviewFormProps {
   userId: string;
   resumeData?: ParsedResumeData | null;
+  /** Job-description-based generation is a paid feature */
+  jdEnabled?: boolean;
 }
 
-const InterviewForm = ({ userId, resumeData }: InterviewFormProps) => {
+const InterviewForm = ({ userId, resumeData, jdEnabled = false }: InterviewFormProps) => {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -65,6 +67,7 @@ const InterviewForm = ({ userId, resumeData }: InterviewFormProps) => {
       amount: 5,
       company_name: undefined,
       use_resume: false,
+      job_description: "",
     },
   });
 
@@ -117,6 +120,10 @@ const InterviewForm = ({ userId, resumeData }: InterviewFormProps) => {
           userid: userId,
           company_name: data.company_name || null,
           use_resume: data.use_resume || false,
+          job_description:
+            jdEnabled && data.job_description?.trim()
+              ? data.job_description.trim()
+              : undefined,
         }),
       });
 
@@ -312,6 +319,46 @@ const InterviewForm = ({ userId, resumeData }: InterviewFormProps) => {
                 </FormItem>
               )}
             />
+
+            {/* Job description (paid feature) */}
+            {jdEnabled ? (
+              <FormField
+                control={form.control}
+                name="job_description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm font-medium text-body">
+                      Job description{" "}
+                      <span className="font-normal text-faint">(optional)</span>
+                    </FormLabel>
+                    <FormControl>
+                      <textarea
+                        {...field}
+                        rows={5}
+                        placeholder="Paste the job posting here — questions will target its exact requirements…"
+                        className="w-full rounded-xl border border-hairline bg-raise px-4 py-3 text-[15px] leading-relaxed text-strong outline-none transition-colors duration-200 placeholder:text-faint hover:border-hairline-strong focus:border-hairline-strong"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            ) : (
+              <div className="flex items-center gap-3 rounded-xl border border-hairline bg-raise p-4 opacity-80">
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-hairline bg-raise">
+                  <Briefcase className="size-4 text-faint" aria-hidden="true" />
+                </div>
+                <div className="flex-1">
+                  <p className="flex items-center gap-1.5 text-sm font-medium text-strong">
+                    Paste a job description
+                    <Lock className="size-3.5 text-faint" aria-hidden="true" />
+                  </p>
+                  <p className="text-xs text-faint">
+                    Tailor questions to a real posting — available on Pro.
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Question count stepper */}
             <FormField

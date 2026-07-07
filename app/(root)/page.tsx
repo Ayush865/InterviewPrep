@@ -265,12 +265,23 @@ async function Dashboard({
 
       {/* Resume */}
       <section aria-labelledby="resume-heading">
-        <h2 id="resume-heading" className="display text-xl">
-          Your resume
-        </h2>
-        <p className="mt-1 text-sm text-faint">
-          Used to tailor interview questions to your background.
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 id="resume-heading" className="display text-xl">
+              Your resume
+            </h2>
+            <p className="mt-1 text-sm text-faint">
+              Used to tailor interview questions to your background.
+            </p>
+          </div>
+          <Link
+            href="/resume"
+            className="inline-flex items-center gap-1 text-sm font-medium text-accent transition-colors duration-200 hover:text-accent-soft"
+          >
+            AI resume review
+            <ArrowRight className="size-4" aria-hidden="true" />
+          </Link>
+        </div>
         <div className="mt-4 max-w-md">
           <ResumeUploadSection userId={userId} initialResume={resume} />
         </div>

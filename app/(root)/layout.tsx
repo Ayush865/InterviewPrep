@@ -43,6 +43,12 @@ const Layout = async ({ children }: { children: ReactNode }) => {
                 >
                   New interview
                 </Link>
+                <Link
+                  href="/progress"
+                  className="hidden rounded-full px-4 py-2 text-sm font-medium text-soft transition-colors duration-200 hover:bg-hover hover:text-strong sm:inline-flex"
+                >
+                  Progress
+                </Link>
                 <ThemeToggle />
                 <Link
                   href="/settings/billing"

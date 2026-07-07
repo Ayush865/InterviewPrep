@@ -18,6 +18,7 @@ const Page = () => {
     loading,
     resumeData,
     plan,
+    features,
     canGenerateForm,
     canGenerateCall,
   } = useGenerationGate();
@@ -74,7 +75,11 @@ const Page = () => {
       )}
 
       <div className="mt-8">
-        <InterviewForm userId={user.id} resumeData={resumeData} />
+        <InterviewForm
+          userId={user.id}
+          resumeData={resumeData}
+          jdEnabled={features.jdInterviews}
+        />
       </div>
     </div>
   );

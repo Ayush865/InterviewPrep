@@ -8,14 +8,15 @@ import dayjs from "dayjs";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
-import { Check, KeyRound, AlertTriangle } from "lucide-react";
+import { KeyRound, AlertTriangle } from "lucide-react";
 
 import UpgradeButton from "@/components/UpgradeButton";
+import PricingTiers from "@/components/billing/PricingTiers";
 import {
   getUserEntitlements,
   getSubscriptionSummary,
 } from "@/lib/actions/premium.action";
-import { PRO_PRICE_USD, PRO_PRICE_INR } from "@/lib/plans";
+import { PLAN_PRICES } from "@/lib/plans";
 import { getPaymentProvider } from "@/lib/payments";
 import { isVapiByokEnabled } from "@/lib/feature-flags";
 import { cn } from "@/lib/utils";
@@ -25,6 +26,7 @@ export const dynamic = "force-dynamic";
 const planLabel = {
   free: "Free",
   pro: "Pro",
+  elite: "Elite",
   byok: "Your Vapi key",
 } as const;
 
@@ -99,8 +101,11 @@ export default async function BillingPage({
 
   // The subscription's own provider wins; fall back to the configured one
   const provider = subscription.provider ?? getPaymentProvider();
+  const currency = provider === "razorpay" ? ("inr" as const) : ("usd" as const);
+  const paidPlan = entitlements.plan === "elite" ? "elite" : "pro";
+  const monthlyPrice = PLAN_PRICES[paidPlan].monthly[currency];
   const priceLabel =
-    provider === "razorpay" ? `₹${PRO_PRICE_INR}/mo` : `$${PRO_PRICE_USD}/mo`;
+    currency === "inr" ? `₹${monthlyPrice}/mo` : `$${monthlyPrice}/mo`;
 
   return (
     <div className="mx-auto w-full max-w-2xl pb-24 pt-12 max-sm:pt-8">
@@ -134,7 +139,7 @@ export default async function BillingPage({
             <p className="text-sm text-faint">Current plan</p>
             <p className="mt-1 flex items-center gap-2.5 text-2xl font-semibold tracking-tight text-strong">
               {planLabel[entitlements.plan]}
-              {entitlements.plan === "pro" && (
+              {(entitlements.plan === "pro" || entitlements.plan === "elite") && (
                 <span className="rounded-full border border-accent/25 bg-accent/10 px-2.5 py-0.5 text-xs font-medium text-accent">
                   {priceLabel}
                 </span>
@@ -148,7 +153,7 @@ export default async function BillingPage({
           )}
         </div>
 
-        {entitlements.plan === "pro" && entitlements.periodEnd && (
+        {entitlements.isPremium && entitlements.periodEnd && (
           <p className="mt-3 text-sm text-soft">
             {entitlements.cancelAtPeriodEnd ? (
               <span className="inline-flex items-center gap-1.5">
@@ -157,7 +162,7 @@ export default async function BillingPage({
                   aria-hidden="true"
                 />
                 Cancels on {dayjs(entitlements.periodEnd).format("MMM D, YYYY")}{" "}
-                — you keep Pro until then.
+                — you keep {planLabel[entitlements.plan]} until then.
               </span>
             ) : (
               <>Renews on {dayjs(entitlements.periodEnd).format("MMM D, YYYY")}.</>
@@ -183,8 +188,8 @@ export default async function BillingPage({
         <div className="mt-6 flex flex-col gap-5 border-t border-hairline pt-6">
           <UsageMeter
             label={
-              entitlements.plan === "pro"
-                ? "Interview generations this period"
+              entitlements.isPremium
+                ? "Interview generations this month"
                 : "Interview generations (form)"
             }
             used={entitlements.generationsUsed}
@@ -199,23 +204,30 @@ export default async function BillingPage({
           )}
           <UsageMeter
             label={
-              entitlements.plan === "pro"
-                ? "Practice sessions this period"
+              entitlements.isPremium
+                ? "Practice sessions this month"
                 : "Practice sessions"
             }
             used={entitlements.sessionsUsed}
             limit={entitlements.sessionsLimit}
           />
+          {entitlements.isPremium && (
+            <UsageMeter
+              label="AI resume reviews this month"
+              used={entitlements.resumeReviewsUsed}
+              limit={entitlements.features.resumeReviewsPerMonth}
+            />
+          )}
         </div>
 
         <div className="mt-7 flex flex-col gap-3 sm:flex-row">
-          {entitlements.plan === "pro" || subscription.hasSubscription ? (
+          {entitlements.isPremium || subscription.hasSubscription ? (
             provider === "razorpay" ? (
               !subscription.cancelAtPeriodEnd && (
                 <UpgradeButton
                   mode="manage"
                   className="btn-quiet flex-1"
-                  confirmMessage="Cancel your Pro renewal? You keep access until the end of the current billing period."
+                  confirmMessage="Cancel your renewal? You keep access until the end of the current billing period."
                 >
                   Cancel renewal
                 </UpgradeButton>
@@ -223,11 +235,7 @@ export default async function BillingPage({
             ) : (
               <UpgradeButton mode="manage" className="btn-quiet flex-1" />
             )
-          ) : (
-            <UpgradeButton className="flex-1">
-              Upgrade to Pro — {priceLabel}
-            </UpgradeButton>
-          )}
+          ) : null}
           {isVapiByokEnabled() && (
             <Link href="/settings/vapi" className="btn-quiet flex-1">
               <KeyRound className="size-4" aria-hidden="true" />
@@ -237,30 +245,21 @@ export default async function BillingPage({
         </div>
       </div>
 
-      {/* Pro pitch for non-subscribers */}
-      {entitlements.plan === "free" && (
-        <div className="panel mt-4 p-7">
-          <h2 className="text-sm font-semibold tracking-tight text-strong">
-            What you get with Pro
-          </h2>
-          <ul className="mt-4 flex list-none flex-col gap-2.5">
-            {[
-              "10 interview generations every month",
-              "10 practice sessions every month (30 minutes each)",
-              "Cancel anytime — keep access until the period ends",
-            ].map((perk) => (
-              <li
-                key={perk}
-                className="flex items-center gap-2.5 text-sm text-body"
-              >
-                <Check
-                  className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400"
-                  aria-hidden="true"
-                />
-                {perk}
-              </li>
-            ))}
-          </ul>
+      {/* Plans — upgrade paths for everyone below Elite */}
+      {entitlements.plan !== "elite" && entitlements.plan !== "byok" && (
+        <div className="mt-10">
+          <h2 className="display text-xl">Plans</h2>
+          <p className="mt-1 text-sm text-faint">
+            Upgrade for progress tracking, session replay, drills, and
+            resume reviews.
+          </p>
+          <div className="mt-6">
+            <PricingTiers
+              currentPlan={entitlements.plan}
+              currency={currency}
+              trialEligible={!subscription.hasSubscription}
+            />
+          </div>
         </div>
       )}
     </div>

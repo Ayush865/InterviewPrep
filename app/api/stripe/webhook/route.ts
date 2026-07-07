@@ -71,7 +71,7 @@ async function syncSubscription(
         : subscription.customer.id,
     provider_subscription_id: subscription.id,
     status: subscription.status,
-    plan: "pro",
+    plan: subscription.metadata?.plan === "elite" ? "elite" : "pro",
     current_period_start: period.start,
     current_period_end: period.end,
     cancel_at_period_end: subscription.cancel_at_period_end,

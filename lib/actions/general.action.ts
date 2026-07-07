@@ -14,6 +14,7 @@ import {
   getUserDashboardInterviews,
   getDiscoverInterviews,
   getFeedbacksByUserAndInterviewIds,
+  getFeedbackHistoryByUser,
   type Interview as InterviewRow,
 } from "@/lib/db-queries";
 import { logger } from "@/lib/logger";
@@ -154,7 +155,8 @@ Score the candidate from 0 to 100 in each area and return ONLY this JSON structu
       })),
     });
 
-    // Save feedback to MySQL
+    // Save feedback to MySQL — keep the transcript for session replay
+    // (cap message count to bound row size)
     const feedback = await createFeedbackInDB({
       id: feedbackId,
       interview_id: interviewId,
@@ -164,6 +166,7 @@ Score the candidate from 0 to 100 in each area and return ONLY this JSON structu
       strengths: object.strengths,
       areas_for_improvement: object.areasForImprovement,
       final_assessment: object.finalAssessment,
+      transcript: transcript.slice(0, 400),
     });
 
     logger.info(`[Feedback] Created feedback ${feedback.id} for interview ${interviewId}`);
@@ -230,6 +233,7 @@ export async function getFeedbackByInterviewId(
       strengths: feedback.strengths,
       areasForImprovement: feedback.areas_for_improvement,
       finalAssessment: feedback.final_assessment,
+      transcript: feedback.transcript ?? null,
       createdAt: feedback.created_at.toISOString(),
     } as Feedback;
   } catch (error) {
@@ -456,6 +460,45 @@ export async function getFeedbackSummaries(
   } catch (error) {
     logger.error("[Feedback] Error batch fetching feedback summaries:", error);
     return {};
+  }
+}
+
+export interface ProgressSession {
+  feedbackId: string;
+  interviewId: string;
+  role: string;
+  type: string;
+  companyName: string | null;
+  coverImage: string | null;
+  totalScore: number;
+  categoryScores: { name: string; score: number; comment: string }[];
+  createdAt: string;
+}
+
+/**
+ * All scored sessions for the progress dashboard, oldest first.
+ */
+export async function getProgressSessions(
+  userId: string
+): Promise<ProgressSession[]> {
+  if (!userId) return [];
+
+  try {
+    const rows = await getFeedbackHistoryByUser(userId);
+    return rows.map((row) => ({
+      feedbackId: row.feedback_id,
+      interviewId: row.interview_id,
+      role: row.role,
+      type: row.type,
+      companyName: row.company_name,
+      coverImage: row.cover_image,
+      totalScore: row.total_score,
+      categoryScores: row.category_scores,
+      createdAt: row.created_at.toISOString(),
+    }));
+  } catch (error) {
+    logger.error("[Progress] Error fetching progress sessions:", error);
+    return [];
   }
 }
 

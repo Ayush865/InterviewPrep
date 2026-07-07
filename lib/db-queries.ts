@@ -71,6 +71,11 @@ export interface CategoryScore {
   comment: string;
 }
 
+export interface TranscriptMessage {
+  role: string;
+  content: string;
+}
+
 export interface Feedback {
   id: string;
   interview_id: string;
@@ -80,6 +85,7 @@ export interface Feedback {
   strengths: string[];  // Stored as JSON in DB
   areas_for_improvement: string[];  // Stored as JSON in DB
   final_assessment: string;
+  transcript: TranscriptMessage[] | null;  // Stored as JSON in DB
   created_at: Date;
 }
 
@@ -630,9 +636,13 @@ export async function createFeedback(feedbackData: {
   strengths: string[];
   areas_for_improvement: string[];
   final_assessment: string;
+  transcript?: TranscriptMessage[] | null;
 }): Promise<Feedback> {
   const pool = getPool();
   const id = feedbackData.id || uuidv4();
+  const transcriptJson = feedbackData.transcript
+    ? JSON.stringify(feedbackData.transcript)
+    : null;
 
   try {
     // Check if feedback already exists
@@ -646,7 +656,7 @@ export async function createFeedback(feedbackData: {
       await pool.execute(
         `UPDATE feedbacks
          SET total_score = ?, category_scores = ?, strengths = ?,
-             areas_for_improvement = ?, final_assessment = ?
+             areas_for_improvement = ?, final_assessment = ?, transcript = ?
          WHERE id = ?`,
         [
           feedbackData.total_score,
@@ -654,19 +664,25 @@ export async function createFeedback(feedbackData: {
           JSON.stringify(feedbackData.strengths),
           JSON.stringify(feedbackData.areas_for_improvement),
           feedbackData.final_assessment,
+          transcriptJson,
           existing[0].id,
         ]
       );
 
       logger.info(`[DB] Feedback updated: ${existing[0].id}`);
-      return { ...feedbackData, id: existing[0].id, created_at: new Date() };
+      return {
+        ...feedbackData,
+        transcript: feedbackData.transcript ?? null,
+        id: existing[0].id,
+        created_at: new Date(),
+      };
     }
 
     // Insert new feedback
     await pool.execute(
       `INSERT INTO feedbacks
-       (id, interview_id, user_id, total_score, category_scores, strengths, areas_for_improvement, final_assessment, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+       (id, interview_id, user_id, total_score, category_scores, strengths, areas_for_improvement, final_assessment, transcript, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
       [
         id,
         feedbackData.interview_id,
@@ -676,6 +692,7 @@ export async function createFeedback(feedbackData: {
         JSON.stringify(feedbackData.strengths),
         JSON.stringify(feedbackData.areas_for_improvement),
         feedbackData.final_assessment,
+        transcriptJson,
       ]
     );
 
@@ -689,6 +706,7 @@ export async function createFeedback(feedbackData: {
 
     return {
       ...feedbackData,
+      transcript: feedbackData.transcript ?? null,
       id,
       created_at: new Date(),
     };
@@ -723,9 +741,161 @@ export async function getFeedbackByInterviewAndUser(
       category_scores: safeJsonParse<CategoryScore[]>(row.category_scores),
       strengths: safeJsonParse<string[]>(row.strengths),
       areas_for_improvement: safeJsonParse<string[]>(row.areas_for_improvement),
+      transcript: row.transcript
+        ? safeJsonParse<TranscriptMessage[]>(row.transcript)
+        : null,
     } as Feedback;
   } catch (error: any) {
     logger.error(`[DB] Error fetching feedback:`, error);
+    throw new Error(`Database error: ${error.message}`);
+  }
+}
+
+// ============================================
+// PROGRESS / HISTORY
+// ============================================
+
+export interface FeedbackHistoryRow {
+  feedback_id: string;
+  interview_id: string;
+  role: string;
+  type: string;
+  company_name: string | null;
+  cover_image: string | null;
+  total_score: number;
+  category_scores: CategoryScore[];
+  created_at: Date;
+}
+
+/**
+ * Every scored session for a user, oldest first — powers the progress
+ * dashboard (trends, category averages, readiness).
+ */
+export async function getFeedbackHistoryByUser(
+  userId: string
+): Promise<FeedbackHistoryRow[]> {
+  const pool = getPool();
+
+  try {
+    const [rows] = await pool.execute<mysql.RowDataPacket[]>(
+      `SELECT f.id AS feedback_id, f.interview_id, f.total_score,
+              f.category_scores, f.created_at,
+              i.role, i.type, i.company_name, i.cover_image
+       FROM feedbacks f
+       INNER JOIN interviews i ON i.id = f.interview_id
+       WHERE f.user_id = ?
+       ORDER BY f.created_at ASC`,
+      [userId]
+    );
+
+    return rows.map((row) => ({
+      ...row,
+      category_scores: safeJsonParse<CategoryScore[]>(row.category_scores),
+    })) as FeedbackHistoryRow[];
+  } catch (error: any) {
+    logger.error(`[DB] Error fetching feedback history:`, error);
+    throw new Error(`Database error: ${error.message}`);
+  }
+}
+
+// ============================================
+// RESUME REVIEWS
+// ============================================
+
+export interface ResumeReview {
+  id: string;
+  user_id: string;
+  target_role: string | null;
+  ats_score: number;
+  summary: string;
+  strengths: string[];
+  issues: string[];
+  bullet_rewrites: { original: string; improved: string }[];
+  created_at: Date;
+}
+
+export async function createResumeReview(data: {
+  user_id: string;
+  target_role: string | null;
+  ats_score: number;
+  summary: string;
+  strengths: string[];
+  issues: string[];
+  bullet_rewrites: { original: string; improved: string }[];
+}): Promise<ResumeReview> {
+  const pool = getPool();
+  const id = uuidv4();
+
+  try {
+    await pool.execute(
+      `INSERT INTO resume_reviews
+       (id, user_id, target_role, ats_score, summary, strengths, issues, bullet_rewrites, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+      [
+        id,
+        data.user_id,
+        data.target_role,
+        data.ats_score,
+        data.summary,
+        JSON.stringify(data.strengths),
+        JSON.stringify(data.issues),
+        JSON.stringify(data.bullet_rewrites),
+      ]
+    );
+
+    logger.info(`[DB] Resume review created: ${id}`);
+    return { ...data, id, created_at: new Date() };
+  } catch (error: any) {
+    logger.error(`[DB] Error creating resume review:`, error);
+    throw new Error(`Database error: ${error.message}`);
+  }
+}
+
+export async function getLatestResumeReview(
+  userId: string
+): Promise<ResumeReview | null> {
+  const pool = getPool();
+
+  try {
+    const [rows] = await pool.execute<mysql.RowDataPacket[]>(
+      `SELECT * FROM resume_reviews
+       WHERE user_id = ?
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [userId]
+    );
+
+    if (rows.length === 0) return null;
+    const row = rows[0];
+    return {
+      ...row,
+      strengths: safeJsonParse<string[]>(row.strengths),
+      issues: safeJsonParse<string[]>(row.issues),
+      bullet_rewrites: safeJsonParse<{ original: string; improved: string }[]>(
+        row.bullet_rewrites
+      ),
+    } as ResumeReview;
+  } catch (error: any) {
+    logger.error(`[DB] Error fetching latest resume review:`, error);
+    throw new Error(`Database error: ${error.message}`);
+  }
+}
+
+export async function countResumeReviewsSince(
+  userId: string,
+  since: Date
+): Promise<number> {
+  const pool = getPool();
+
+  try {
+    const [rows] = await pool.execute<mysql.RowDataPacket[]>(
+      `SELECT COUNT(*) as count FROM resume_reviews
+       WHERE user_id = ? AND created_at >= ?`,
+      [userId, since]
+    );
+    return rows[0].count || 0;
+  } catch (error: any) {
+    logger.error(`[DB] Error counting resume reviews:`, error);
     throw new Error(`Database error: ${error.message}`);
   }
 }

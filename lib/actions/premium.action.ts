@@ -8,14 +8,17 @@ import {
   countInterviewsCreatedSince,
   countFeedbacksCreatedSince,
   countCallGenerations,
+  countResumeReviewsSince,
 } from "@/lib/db-queries";
 import { hasUserVapiCredentials } from "@/lib/actions/vapi.action";
 import {
   type Entitlements,
+  type PaidPlan,
+  PLAN_FEATURES,
+  PLAN_LIMITS,
   FREE_CALL_GENERATIONS_TOTAL,
   FREE_SESSIONS_TOTAL,
-  PRO_GENERATIONS_PER_PERIOD,
-  PRO_SESSIONS_PER_PERIOD,
+  usageWindowStart,
 } from "@/lib/plans";
 import { logger } from "@/lib/logger";
 
@@ -32,7 +35,7 @@ export async function getUserFeedbackCount(userId: string): Promise<number> {
 }
 
 /**
- * Whether the user has an active Pro subscription (or a legacy manual
+ * Whether the user has an active paid subscription (or a legacy manual
  * premium flag). Subscription expiry is checked against the DB record,
  * which the payment-provider webhook keeps in sync.
  */
@@ -57,26 +60,34 @@ export async function getUserPremiumStatus(userId: string): Promise<boolean> {
   }
 }
 
-/** Pro entitlements for a given usage snapshot */
-function proEntitlements(
-  generationsUsed: number,
-  sessionsUsed: number,
+/** Paid-plan entitlements for a given usage snapshot */
+function paidEntitlements(
+  plan: PaidPlan,
+  usage: {
+    generationsUsed: number;
+    sessionsUsed: number;
+    resumeReviewsUsed: number;
+  },
   periodEnd: string | null,
   cancelAtPeriodEnd: boolean
 ): Entitlements {
-  const canGenerate = generationsUsed < PRO_GENERATIONS_PER_PERIOD;
+  const limits = PLAN_LIMITS[plan];
+  const canGenerate = usage.generationsUsed < limits.generations;
+
   return {
-    plan: "pro",
+    plan,
     isPremium: true,
     canGenerateForm: canGenerate,
     canGenerateCall: canGenerate,
-    canPractice: sessionsUsed < PRO_SESSIONS_PER_PERIOD,
-    generationsUsed,
-    generationsLimit: PRO_GENERATIONS_PER_PERIOD,
+    canPractice: usage.sessionsUsed < limits.sessions,
+    features: PLAN_FEATURES[plan],
+    resumeReviewsUsed: usage.resumeReviewsUsed,
+    generationsUsed: usage.generationsUsed,
+    generationsLimit: limits.generations,
     callGenerationsUsed: 0,
     callGenerationsLimit: null, // calls count within the shared quota
-    sessionsUsed,
-    sessionsLimit: PRO_SESSIONS_PER_PERIOD,
+    sessionsUsed: usage.sessionsUsed,
+    sessionsLimit: limits.sessions,
     periodEnd,
     cancelAtPeriodEnd,
   };
@@ -85,10 +96,16 @@ function proEntitlements(
 /**
  * Single source of truth for what a user is allowed to do.
  *
- *  - byok:  own Vapi credentials — unlimited
- *  - pro:   10 generations (any method) + 10 practice sessions per period
- *  - free:  unlimited form generations, 1 hiring-manager call generation,
- *           1 practice session (lifetime)
+ *  - byok:  own Vapi credentials — unlimited usage, Pro-level features
+ *  - elite: 30 generations + 30 sessions per monthly window, unlimited
+ *           resume reviews
+ *  - pro:   10 generations + 10 sessions per monthly window, 1 resume
+ *           review per month
+ *  - free:  unlimited form generations, 1 call generation, 1 practice
+ *           session (lifetime); no premium features
+ *
+ * Annual subscriptions bill yearly but quotas reset on the monthly
+ * anniversary of the billing period start (see usageWindowStart).
  */
 export async function getUserEntitlements(
   userId: string
@@ -99,6 +116,8 @@ export async function getUserEntitlements(
     canGenerateForm: true,
     canGenerateCall: true,
     canPractice: true,
+    features: PLAN_FEATURES.byok,
+    resumeReviewsUsed: 0,
     generationsUsed: 0,
     generationsLimit: null,
     callGenerationsUsed: 0,
@@ -115,6 +134,7 @@ export async function getUserEntitlements(
     canGenerateForm: false,
     canGenerateCall: false,
     canPractice: false,
+    features: PLAN_FEATURES.free,
     callGenerationsLimit: FREE_CALL_GENERATIONS_TOTAL,
     sessionsLimit: FREE_SESSIONS_TOTAL,
   };
@@ -127,9 +147,11 @@ export async function getUserEntitlements(
       getUserSubscription(userId),
     ]);
 
-    // Own Vapi credentials: everything is on their own bill
+    // Own Vapi credentials: usage is on their own bill
     if (hasByok) {
-      return unlimited;
+      const monthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      const resumeReviewsUsed = await countResumeReviewsSince(userId, monthAgo);
+      return { ...unlimited, resumeReviewsUsed };
     }
 
     const subscriptionActive =
@@ -140,15 +162,23 @@ export async function getUserEntitlements(
       subscription.current_period_end > new Date();
 
     if (subscriptionActive && subscription!.current_period_start) {
-      const periodStart = subscription!.current_period_start;
-      const [generationsUsed, sessionsUsed] = await Promise.all([
-        countInterviewsCreatedSince(userId, periodStart),
-        countFeedbacksCreatedSince(userId, periodStart),
-      ]);
+      const plan: PaidPlan =
+        subscription!.plan === "elite" ? "elite" : "pro";
+      // Monthly usage window (handles annual billing periods too)
+      const windowStart = usageWindowStart(
+        subscription!.current_period_start
+      );
 
-      return proEntitlements(
-        generationsUsed,
-        sessionsUsed,
+      const [generationsUsed, sessionsUsed, resumeReviewsUsed] =
+        await Promise.all([
+          countInterviewsCreatedSince(userId, windowStart),
+          countFeedbacksCreatedSince(userId, windowStart),
+          countResumeReviewsSince(userId, windowStart),
+        ]);
+
+      return paidEntitlements(
+        plan,
+        { generationsUsed, sessionsUsed, resumeReviewsUsed },
         subscription!.current_period_end!.toISOString(),
         subscription!.cancel_at_period_end
       );
@@ -159,12 +189,19 @@ export async function getUserEntitlements(
     const user = await getUserById(userId);
     if (Boolean(user?.premium_user) && !subscription) {
       const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-      const [generationsUsed, sessionsUsed] = await Promise.all([
-        countInterviewsCreatedSince(userId, thirtyDaysAgo),
-        countFeedbacksCreatedSince(userId, thirtyDaysAgo),
-      ]);
+      const [generationsUsed, sessionsUsed, resumeReviewsUsed] =
+        await Promise.all([
+          countInterviewsCreatedSince(userId, thirtyDaysAgo),
+          countFeedbacksCreatedSince(userId, thirtyDaysAgo),
+          countResumeReviewsSince(userId, thirtyDaysAgo),
+        ]);
 
-      return proEntitlements(generationsUsed, sessionsUsed, null, false);
+      return paidEntitlements(
+        "pro",
+        { generationsUsed, sessionsUsed, resumeReviewsUsed },
+        null,
+        false
+      );
     }
 
     // Free plan: form generation is unlimited; the hiring-manager call
@@ -180,6 +217,8 @@ export async function getUserEntitlements(
       canGenerateForm: true,
       canGenerateCall: callGenerationsUsed < FREE_CALL_GENERATIONS_TOTAL,
       canPractice: counts.feedbackCount < FREE_SESSIONS_TOTAL,
+      features: PLAN_FEATURES.free,
+      resumeReviewsUsed: 0,
       generationsUsed: counts.interviewCount,
       generationsLimit: null, // form generation is unlimited
       callGenerationsUsed,
@@ -197,11 +236,36 @@ export async function getUserEntitlements(
 }
 
 /**
+ * Whether the user can run a resume review right now, based on plan
+ * feature limits and this month's usage.
+ */
+export async function canUseResumeReview(userId: string): Promise<{
+  allowed: boolean;
+  used: number;
+  limit: number | null;
+  plan: Entitlements["plan"];
+}> {
+  const entitlements = await getUserEntitlements(userId);
+  const limit = entitlements.features.resumeReviewsPerMonth;
+
+  if (limit === null) {
+    return { allowed: true, used: entitlements.resumeReviewsUsed, limit, plan: entitlements.plan };
+  }
+  return {
+    allowed: entitlements.resumeReviewsUsed < limit,
+    used: entitlements.resumeReviewsUsed,
+    limit,
+    plan: entitlements.plan,
+  };
+}
+
+/**
  * Subscription summary for the billing page
  */
 export async function getSubscriptionSummary(userId: string): Promise<{
   hasSubscription: boolean;
   provider: string | null;
+  plan: string | null;
   status: string | null;
   periodEnd: string | null;
   cancelAtPeriodEnd: boolean;
@@ -212,6 +276,7 @@ export async function getSubscriptionSummary(userId: string): Promise<{
       return {
         hasSubscription: false,
         provider: null,
+        plan: null,
         status: null,
         periodEnd: null,
         cancelAtPeriodEnd: false,
@@ -220,6 +285,7 @@ export async function getSubscriptionSummary(userId: string): Promise<{
     return {
       hasSubscription: true,
       provider: subscription.provider,
+      plan: subscription.plan,
       status: subscription.status,
       periodEnd: subscription.current_period_end?.toISOString() ?? null,
       cancelAtPeriodEnd: subscription.cancel_at_period_end,
@@ -229,6 +295,7 @@ export async function getSubscriptionSummary(userId: string): Promise<{
     return {
       hasSubscription: false,
       provider: null,
+      plan: null,
       status: null,
       periodEnd: null,
       cancelAtPeriodEnd: false,

@@ -15,7 +15,11 @@ import {
   getFeedbackByInterviewId,
   getInterviewById,
 } from "@/lib/actions/general.action";
+import { getUserEntitlements } from "@/lib/actions/premium.action";
 import Reveal from "@/components/motion/Reveal";
+import SessionReplay from "@/components/feedback/SessionReplay";
+import DrillButton from "@/components/feedback/DrillButton";
+import UpgradeButton from "@/components/UpgradeButton";
 import { cn } from "@/lib/utils";
 
 function scoreTone(score: number) {
@@ -38,11 +42,17 @@ const Feedback = async ({ params }: RouteParams) => {
   const interview = await getInterviewById(id);
   if (!interview) redirect("/");
 
-  const feedback = await getFeedbackByInterviewId({
-    interviewId: id,
-    userId: clerkUser.id,
-  });
+  const [feedback, entitlements] = await Promise.all([
+    getFeedbackByInterviewId({ interviewId: id, userId: clerkUser.id }),
+    getUserEntitlements(clerkUser.id),
+  ]);
   if (!feedback) redirect(`/interview/${id}`);
+
+  // Weakest category powers the targeted drill
+  const weakestCategory =
+    feedback.categoryScores && feedback.categoryScores.length > 0
+      ? [...feedback.categoryScores].sort((a, b) => a.score - b.score)[0]
+      : null;
 
   return (
     <div className="mx-auto w-full max-w-3xl pb-24 pt-12 max-sm:pt-8">
@@ -173,11 +183,73 @@ const Feedback = async ({ params }: RouteParams) => {
         </Reveal>
       </div>
 
+      {/* Targeted drill (paid feature) */}
+      {weakestCategory && (
+        <Reveal delay={0.16} className="panel mt-4 flex items-center justify-between gap-6 p-7 max-sm:flex-col max-sm:items-start max-sm:p-6">
+          <div>
+            <h2 className="display text-lg">
+              Turn your weakest area into a strength
+            </h2>
+            <p className="mt-1 text-sm text-soft">
+              {weakestCategory.name} was your lowest score (
+              {weakestCategory.score}/100). A 5-question drill targets exactly
+              that.
+            </p>
+          </div>
+          {entitlements.features.drills ? (
+            <DrillButton
+              userId={clerkUser.id}
+              role={interview.role}
+              level={interview.level}
+              techstack={interview.techstack}
+              focusArea={weakestCategory.name}
+            />
+          ) : (
+            <UpgradeButton className="!h-10 shrink-0 text-sm">
+              Unlock drills with Pro
+            </UpgradeButton>
+          )}
+        </Reveal>
+      )}
+
+      {/* Session replay (paid feature) */}
+      {feedback.transcript && feedback.transcript.length > 0 && (
+        <Reveal delay={0.18} className="panel mt-4 p-7 max-sm:p-6">
+          <h2 className="display text-lg">Session replay</h2>
+          {entitlements.features.replay ? (
+            <>
+              <p className="mt-1 text-sm text-faint">
+                Your exact answers, question by question.
+              </p>
+              <div className="mt-5">
+                <SessionReplay
+                  transcript={feedback.transcript}
+                  userName={clerkUser.firstName || "You"}
+                />
+              </div>
+            </>
+          ) : (
+            <div className="mt-3">
+              <p className="text-sm leading-relaxed text-soft">
+                Replay the full conversation and review your exact answers —
+                available on Pro.
+              </p>
+              <div className="mt-4">
+                <UpgradeButton className="!h-10 text-sm" />
+              </div>
+            </div>
+          )}
+        </Reveal>
+      )}
+
       {/* Actions */}
       <div className="mt-8 flex items-center justify-center gap-3 max-sm:flex-col">
         <Link href={`/interview/${id}`} className="btn-accent max-sm:w-full">
           <RotateCcw className="size-4" aria-hidden="true" />
           Retake interview
+        </Link>
+        <Link href="/progress" className="btn-quiet max-sm:w-full">
+          View progress
         </Link>
         <Link href="/" className="btn-quiet max-sm:w-full">
           Back to dashboard
