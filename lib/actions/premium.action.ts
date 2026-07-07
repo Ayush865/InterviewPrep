@@ -191,6 +191,7 @@ export async function getUserEntitlements(
  */
 export async function getSubscriptionSummary(userId: string): Promise<{
   hasSubscription: boolean;
+  provider: string | null;
   status: string | null;
   periodEnd: string | null;
   cancelAtPeriodEnd: boolean;
@@ -200,6 +201,7 @@ export async function getSubscriptionSummary(userId: string): Promise<{
     if (!subscription) {
       return {
         hasSubscription: false,
+        provider: null,
         status: null,
         periodEnd: null,
         cancelAtPeriodEnd: false,
@@ -207,6 +209,7 @@ export async function getSubscriptionSummary(userId: string): Promise<{
     }
     return {
       hasSubscription: true,
+      provider: subscription.provider,
       status: subscription.status,
       periodEnd: subscription.current_period_end?.toISOString() ?? null,
       cancelAtPeriodEnd: subscription.cancel_at_period_end,
@@ -215,6 +218,7 @@ export async function getSubscriptionSummary(userId: string): Promise<{
     logger.error("Error fetching subscription summary:", error);
     return {
       hasSubscription: false,
+      provider: null,
       status: null,
       periodEnd: null,
       cancelAtPeriodEnd: false,

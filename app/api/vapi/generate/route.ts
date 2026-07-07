@@ -111,7 +111,7 @@ export async function POST(request: Request) {
       const error =
         entitlements.plan === "pro"
           ? `You've used all ${entitlements.generationsLimit} interview generations for this billing period. Your quota resets on renewal${byokHint}.`
-          : `Free plan limit reached. You can only generate 1 interview. Upgrade to Pro ($5/month)${byokHint}.`;
+          : `Free plan limit reached. You can only generate 1 interview. Upgrade to Pro${byokHint}.`;
       return Response.json(
         { success: false, error },
         { status: 403, headers: corsHeaders }

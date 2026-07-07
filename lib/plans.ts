@@ -13,6 +13,8 @@
 export type Plan = "free" | "pro" | "byok";
 
 export const PRO_PRICE_USD = 5;
+/** Razorpay charges in INR — ~$5 equivalent */
+export const PRO_PRICE_INR = 425;
 
 export const FREE_GENERATIONS_TOTAL = 1;
 export const FREE_SESSIONS_TOTAL = 1;

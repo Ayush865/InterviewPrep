@@ -15,7 +15,8 @@ import {
   getUserEntitlements,
   getSubscriptionSummary,
 } from "@/lib/actions/premium.action";
-import { PRO_PRICE_USD } from "@/lib/plans";
+import { PRO_PRICE_USD, PRO_PRICE_INR } from "@/lib/plans";
+import { getPaymentProvider } from "@/lib/payments";
 import { isVapiByokEnabled } from "@/lib/feature-flags";
 import { cn } from "@/lib/utils";
 
@@ -96,6 +97,11 @@ export default async function BillingPage({
     getSubscriptionSummary(userId),
   ]);
 
+  // The subscription's own provider wins; fall back to the configured one
+  const provider = subscription.provider ?? getPaymentProvider();
+  const priceLabel =
+    provider === "razorpay" ? `₹${PRO_PRICE_INR}/mo` : `$${PRO_PRICE_USD}/mo`;
+
   return (
     <div className="mx-auto w-full max-w-2xl pb-24 pt-12 max-sm:pt-8">
       <header>
@@ -130,7 +136,7 @@ export default async function BillingPage({
               {planLabel[entitlements.plan]}
               {entitlements.plan === "pro" && (
                 <span className="rounded-full border border-accent/25 bg-accent/10 px-2.5 py-0.5 text-xs font-medium text-accent">
-                  ${PRO_PRICE_USD}/mo
+                  {priceLabel}
                 </span>
               )}
             </p>
@@ -197,9 +203,23 @@ export default async function BillingPage({
 
         <div className="mt-7 flex flex-col gap-3 sm:flex-row">
           {entitlements.plan === "pro" || subscription.hasSubscription ? (
-            <UpgradeButton mode="portal" className="btn-quiet flex-1" />
+            provider === "razorpay" ? (
+              !subscription.cancelAtPeriodEnd && (
+                <UpgradeButton
+                  mode="manage"
+                  className="btn-quiet flex-1"
+                  confirmMessage="Cancel your Pro renewal? You keep access until the end of the current billing period."
+                >
+                  Cancel renewal
+                </UpgradeButton>
+              )
+            ) : (
+              <UpgradeButton mode="manage" className="btn-quiet flex-1" />
+            )
           ) : (
-            <UpgradeButton className="flex-1" />
+            <UpgradeButton className="flex-1">
+              Upgrade to Pro — {priceLabel}
+            </UpgradeButton>
           )}
           {isVapiByokEnabled() && (
             <Link href="/settings/vapi" className="btn-quiet flex-1">

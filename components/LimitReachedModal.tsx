@@ -19,7 +19,7 @@ interface LimitReachedModalProps {
 const premiumPerks = [
   "10 interview generations every month",
   "10 practice sessions (30 min) every month",
-  "Only $5/month — cancel anytime",
+  "Cancel anytime — keep access until the period ends",
 ];
 
 const LimitReachedModal = ({

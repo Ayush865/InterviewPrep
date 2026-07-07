@@ -11,7 +11,7 @@ import Stripe from "stripe";
 import { getStripe } from "@/lib/stripe";
 import {
   upsertUserSubscription,
-  getSubscriptionByStripeId,
+  getSubscriptionByProviderId,
 } from "@/lib/db-queries";
 import { logger } from "@/lib/logger";
 
@@ -51,7 +51,7 @@ async function syncSubscription(
   const userId =
     subscription.metadata?.userId ||
     fallbackUserId ||
-    (await getSubscriptionByStripeId(subscription.id))?.user_id;
+    (await getSubscriptionByProviderId(subscription.id))?.user_id;
 
   if (!userId) {
     logger.error(
@@ -64,11 +64,12 @@ async function syncSubscription(
 
   await upsertUserSubscription({
     user_id: userId,
-    stripe_customer_id:
+    provider: "stripe",
+    provider_customer_id:
       typeof subscription.customer === "string"
         ? subscription.customer
         : subscription.customer.id,
-    stripe_subscription_id: subscription.id,
+    provider_subscription_id: subscription.id,
     status: subscription.status,
     plan: "pro",
     current_period_start: period.start,

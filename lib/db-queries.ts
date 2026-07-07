@@ -813,8 +813,9 @@ export async function getInterviewsWithFeedbackByUserId(userId: string): Promise
 export interface UserSubscription {
   id: string;
   user_id: string;
-  stripe_customer_id: string;
-  stripe_subscription_id: string;
+  provider: string; // 'stripe' | 'razorpay'
+  provider_customer_id: string;
+  provider_subscription_id: string;
   status: string;
   plan: string;
   current_period_start: Date | null;
@@ -850,17 +851,17 @@ export async function getUserSubscription(
 }
 
 /**
- * Find a subscription by its Stripe subscription ID (webhook lookups)
+ * Find a subscription by its provider subscription ID (webhook lookups)
  */
-export async function getSubscriptionByStripeId(
-  stripeSubscriptionId: string
+export async function getSubscriptionByProviderId(
+  providerSubscriptionId: string
 ): Promise<UserSubscription | null> {
   const pool = getPool();
 
   try {
     const [rows] = await pool.execute<mysql.RowDataPacket[]>(
-      `SELECT * FROM user_subscriptions WHERE stripe_subscription_id = ? LIMIT 1`,
-      [stripeSubscriptionId]
+      `SELECT * FROM user_subscriptions WHERE provider_subscription_id = ? LIMIT 1`,
+      [providerSubscriptionId]
     );
 
     if (rows.length === 0) return null;
@@ -869,19 +870,20 @@ export async function getSubscriptionByStripeId(
       cancel_at_period_end: Boolean(rows[0].cancel_at_period_end),
     } as UserSubscription;
   } catch (error: any) {
-    logger.error(`[DB] Error fetching subscription by Stripe ID:`, error);
+    logger.error(`[DB] Error fetching subscription by provider ID:`, error);
     throw new Error(`Database error: ${error.message}`);
   }
 }
 
 /**
- * Insert or update a user's subscription from Stripe webhook data.
- * Also keeps the denormalized users.premium_user flag in sync.
+ * Insert or update a user's subscription from payment-provider webhook
+ * data. Also keeps the denormalized users.premium_user flag in sync.
  */
 export async function upsertUserSubscription(data: {
   user_id: string;
-  stripe_customer_id: string;
-  stripe_subscription_id: string;
+  provider: string;
+  provider_customer_id: string;
+  provider_subscription_id: string;
   status: string;
   plan?: string;
   current_period_start: Date | null;
@@ -890,30 +892,33 @@ export async function upsertUserSubscription(data: {
 }): Promise<void> {
   const pool = getPool();
   const id = uuidv4();
+  const activeStatuses = ["active", "trialing", "authenticated"];
   const isActive =
-    (data.status === "active" || data.status === "trialing") &&
+    activeStatuses.includes(data.status) &&
     (!data.current_period_end || data.current_period_end > new Date());
 
   try {
     await pool.execute(
       `INSERT INTO user_subscriptions
-         (id, user_id, stripe_customer_id, stripe_subscription_id, status, plan,
+         (id, user_id, provider, provider_customer_id, provider_subscription_id, status, plan,
           current_period_start, current_period_end, cancel_at_period_end, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
        ON DUPLICATE KEY UPDATE
-         stripe_customer_id     = VALUES(stripe_customer_id),
-         stripe_subscription_id = VALUES(stripe_subscription_id),
-         status                 = VALUES(status),
-         plan                   = VALUES(plan),
-         current_period_start   = VALUES(current_period_start),
-         current_period_end     = VALUES(current_period_end),
-         cancel_at_period_end   = VALUES(cancel_at_period_end),
-         updated_at             = NOW()`,
+         provider                 = VALUES(provider),
+         provider_customer_id     = VALUES(provider_customer_id),
+         provider_subscription_id = VALUES(provider_subscription_id),
+         status                   = VALUES(status),
+         plan                     = VALUES(plan),
+         current_period_start     = VALUES(current_period_start),
+         current_period_end       = VALUES(current_period_end),
+         cancel_at_period_end     = VALUES(cancel_at_period_end),
+         updated_at               = NOW()`,
       [
         id,
         data.user_id,
-        data.stripe_customer_id,
-        data.stripe_subscription_id,
+        data.provider,
+        data.provider_customer_id,
+        data.provider_subscription_id,
         data.status,
         data.plan || "pro",
         data.current_period_start,

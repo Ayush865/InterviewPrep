@@ -10,6 +10,7 @@ const isPublicRoute = createRouteMatcher([
   '/api/vapi/clone(.*)',
   '/api/webhooks/clerk(.*)',
   '/api/stripe/webhook(.*)',
+  '/api/razorpay/webhook(.*)',
 ])
 
 export default clerkMiddleware(async (auth, request) => {
