@@ -303,6 +303,7 @@ export async function createInterview(interviewData: {
   cover_image?: string;
   company_name?: string;
   generation_method?: "form" | "call";
+  used_resume?: boolean;
 }): Promise<Interview> {
   const pool = getPool();
   const id = uuidv4();
@@ -310,8 +311,8 @@ export async function createInterview(interviewData: {
   try {
     await pool.execute(
       `INSERT INTO interviews
-       (id, user_id, role, type, level, techstack, questions, finalized, cover_image, company_name, generation_method, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+       (id, user_id, role, type, level, techstack, questions, finalized, cover_image, company_name, generation_method, used_resume, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
       [
         id,
         interviewData.user_id,
@@ -324,6 +325,7 @@ export async function createInterview(interviewData: {
         interviewData.cover_image || null,
         interviewData.company_name || null,
         interviewData.generation_method || "form",
+        interviewData.used_resume || false,
       ]
     );
 
@@ -450,7 +452,7 @@ export async function getLatestInterviews(limit: number = 20): Promise<Interview
     // Safe because limit is a number
     const [rows] = await pool.execute<mysql.RowDataPacket[]>(
       `SELECT * FROM interviews
-       WHERE finalized = true
+       WHERE finalized = true AND used_resume = false
        ORDER BY created_at DESC
        LIMIT ${parseInt(String(limit), 10)}`
     );
@@ -480,7 +482,7 @@ export async function getLatestInterviewsExcludingUser(
     // Safe because limit is a number
     const [rows] = await pool.execute<mysql.RowDataPacket[]>(
       `SELECT * FROM interviews
-       WHERE finalized = true AND user_id != ?
+       WHERE finalized = true AND used_resume = false AND user_id != ?
        ORDER BY created_at DESC
        LIMIT ${parseInt(String(limit), 10)}`,
       [excludeUserId]
@@ -567,6 +569,7 @@ export async function getDiscoverInterviews(
     const [rows] = await pool.execute<mysql.RowDataPacket[]>(
       `SELECT i.* FROM interviews i
        WHERE i.finalized = true
+         AND i.used_resume = false
          AND i.user_id != ?
          AND NOT EXISTS (
            SELECT 1 FROM feedbacks f
@@ -580,6 +583,7 @@ export async function getDiscoverInterviews(
     const [countRows] = await pool.execute<mysql.RowDataPacket[]>(
       `SELECT COUNT(*) as count FROM interviews i
        WHERE i.finalized = true
+         AND i.used_resume = false
          AND i.user_id != ?
          AND NOT EXISTS (
            SELECT 1 FROM feedbacks f

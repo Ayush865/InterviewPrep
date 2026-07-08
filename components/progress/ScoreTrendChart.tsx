@@ -76,7 +76,7 @@ const ScoreTrendChart = ({ points }: ScoreTrendChartProps) => {
         {/* Area fill under the line, very subtle */}
         <path
           d={`${path} L ${x(points.length - 1)} ${y(0)} L ${x(0)} ${y(0)} Z`}
-          fill="var(--color-accent)"
+          fill="#ed5b23"
           opacity={0.07}
         />
 
@@ -84,7 +84,7 @@ const ScoreTrendChart = ({ points }: ScoreTrendChartProps) => {
         <path
           d={path}
           fill="none"
-          stroke="var(--color-accent)"
+          stroke="#ed5b23"
           strokeWidth={2}
           strokeLinejoin="round"
           strokeLinecap="round"
@@ -109,7 +109,7 @@ const ScoreTrendChart = ({ points }: ScoreTrendChartProps) => {
             cx={x(i)}
             cy={y(p.score)}
             r={hover === i ? 5 : 4}
-            fill="var(--color-accent)"
+            fill="#ed5b23"
             stroke="var(--surface)"
             strokeWidth={2}
           />

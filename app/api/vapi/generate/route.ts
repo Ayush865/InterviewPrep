@@ -149,9 +149,12 @@ export async function POST(request: Request) {
       );
     }
 
+    // Normalize use_resume — Vapi function calls may send it as a string
+    const usedResume = use_resume === true || use_resume === "true";
+
     // Optionally fetch resume context from Upstash Vector
     let resumeContext = "";
-    if (use_resume && userid) {
+    if (usedResume && userid) {
       try {
         const resumeData = await getResumeVector(userid);
         if (resumeData) {
@@ -248,6 +251,9 @@ ${String(job_description).substring(0, 5000)}
       cover_image: getLogoForCompany(company_name),
       company_name: company_name || null,
       generation_method: generationMethod,
+      // Resume-tailored interviews stay private to their creator —
+      // excluded from Discover (see getDiscoverInterviews)
+      used_resume: usedResume,
     });
 
     logger.info(`[Interview] Created interview ${interview.id} for user ${userid}`);
