@@ -269,7 +269,7 @@ export const interviewCovers = [
   "/Atlassian.svg",
   "/LinkedIn.svg",
   "/Stripe.svg",
-  "/PayPal.svg",
+  "/Paypal.svg",
   "/X.svg"
 ];
 
