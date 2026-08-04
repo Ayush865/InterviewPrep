@@ -1,0 +1,18 @@
+-- ============================================
+-- Drop the UNIQUE constraint on users.email.
+--
+-- Clerk's id (primary key) is the sole identity key this app uses for
+-- every write (interviews, feedbacks, subscriptions, resumes,
+-- resume_reviews all key off users.id). The only consumer of email
+-- uniqueness was the legacy signIn/signUp flow in lib/actions/auth.action.ts,
+-- which nothing calls anymore (Clerk's hosted auth replaced it).
+--
+-- The constraint actively breaks real signups: if the same email
+-- authenticates under two different Clerk user ids (e.g. dev and prod
+-- Clerk instances sharing one database), the second user's insert
+-- collides on email and throws "Duplicate entry ... for key
+-- 'users.email'" even though the ids are legitimately distinct.
+--
+-- idx_email (non-unique, for lookups) is left in place.
+-- ============================================
+ALTER TABLE users DROP INDEX email;
