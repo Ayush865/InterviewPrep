@@ -15,7 +15,8 @@
 // pdf-parse reads test fixtures at require-time — must run in Node.js runtime
 export const runtime = "nodejs";
 
-import { upsertUserResume } from "@/lib/db-queries";
+import { auth, currentUser } from "@clerk/nextjs/server";
+import { upsertUserResume, getOrCreateUser } from "@/lib/db-queries";
 import { upsertResumeVector } from "@/lib/vector-store";
 import { logger } from "@/lib/logger";
 
@@ -93,6 +94,30 @@ export async function POST(request: Request): Promise<Response> {
         { status: 400 }
       );
     }
+
+    // Require an authenticated session matching the claimed userid —
+    // upsertUserResume/upsertResumeVector trust this value verbatim.
+    const { userId: authUserId } = await auth();
+    if (!authUserId || authUserId !== userid) {
+      return Response.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
+    // Ensure the user row exists before writing user_resumes — the Clerk
+    // webhook that syncs new users into MySQL can lag or be missed,
+    // otherwise the FK constraint on user_resumes.user_id fails.
+    const clerkUser = await currentUser();
+    await getOrCreateUser({
+      id: userid,
+      name:
+        clerkUser?.firstName || clerkUser?.username
+          ? `${clerkUser.firstName ?? ""} ${clerkUser.lastName ?? ""}`.trim() ||
+            clerkUser.username!
+          : "User",
+      email: clerkUser?.emailAddresses?.[0]?.emailAddress ?? `${userid}@temp.com`,
+    });
 
     if (file.size > MAX_FILE_SIZE) {
       return Response.json(
